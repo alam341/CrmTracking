@@ -1112,8 +1112,8 @@ function initTrackingPage(cfg) {
 
   load();
 
-  // Auto-refresh tiap 60 detik secara silent (tanpa loading spinner)
-  setInterval(() => load(true), 60 * 1000);
+  // Auto-refresh tiap 5 menit secara silent — data CRM dari upload, tidak perlu sering poll
+  setInterval(() => load(true), 5 * 60 * 1000);
 }
 
 function ensureModal() {
