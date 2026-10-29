@@ -3,13 +3,18 @@
 // GET  /api/notif-proxy?action=qr      → { qr: "data:image/png;base64,..." } atau { connected: true }
 // POST /api/notif-proxy?action=send    → { to, message } — kirim WA manual (test / dari browser)
 
-const NOTIF_URL    = process.env.NOTIF_VPS_URL || 'http://13.140.178.4:3002';
-const NOTIF_SECRET = process.env.NOTIF_SECRET  || 'adsysukses2026';
+const NOTIF_URL    = process.env.NOTIF_VPS_URL;
+const NOTIF_SECRET = process.env.NOTIF_SECRET || 'adsysukses2026';
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
+
+  // Kalau NOTIF_VPS_URL belum di-set → belum dikonfigurasi
+  if (!NOTIF_URL) {
+    return res.json({ unconfigured: true });
+  }
 
   const action = req.query.action || 'status';
 
