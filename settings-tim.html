@@ -123,14 +123,9 @@ async function fuReset(key) {
   await fuSave(key);
 }
 
-const TIM_TABS = [
-  { key: 'crm', label: 'CRM' },
-  { key: 'crm', label: 'CRM' },
-];
-let timActiveDomain = 'crm';
 let _timMembers = [];
 let timPage = 1;
-const TIM_PAGE_SIZE = 5;
+const TIM_PAGE_SIZE = 10;
 
 (async () => {
   await initSupabaseClient();
@@ -196,15 +191,13 @@ function renderTeamPage() {
       <div class="card-header">
         <div class="card-header-left">
           <h3>👥 Kelola Tim CS</h3>
-          <div class="card-sub">Daftar CS/tim per domain — namanya dicocokin otomatis dari kolom "Instruksi Pengiriman" pas upload, buat rute notif WA kalau order-nya bermasalah</div>
+          <div class="card-sub">Nama CS harus sama persis dengan kolom cs_nama di data upload — dipakai untuk rute notif WA kalau ada paket bermasalah</div>
         </div>
+        <button class="btn btn-primary btn-sm" onclick="openMemberModal()">+ Tambah CS</button>
       </div>
-      <div class="tr-tabs" id="timTabs"></div>
-      <div style="font-size:.78rem;color:var(--text-3);margin-bottom:12px">Data CS diambil otomatis dari CS Input — perubahan dilakukan di sistem CS Input.</div>
       <div id="timList"></div>
     </div>
   `;
-  renderTimTabs();
   loadTeamMembers();
   loadNotifStatus();
 }
@@ -271,19 +264,14 @@ async function loadNotifStatus() {
   }
 }
 
-function renderTimTabs() {
-  document.getElementById('timTabs').innerHTML = TIM_TABS.map(t =>
-    `<div class="tr-tab ${timActiveDomain === t.key ? 'active' : ''}" onclick="setTimTab('${t.key}')">${t.label}</div>`
-  ).join('');
-}
-
-function setTimTab(domain) { timActiveDomain = domain; timPage = 1; renderTimTabs(); loadTeamMembers(); }
-
+// ── Team Members CRUD ─────────────────────────────────────────────────────────
 async function loadTeamMembers() {
   const el = document.getElementById('timList');
   el.innerHTML = `<div class="page-loading"><div class="spinner"></div></div>`;
   try {
-    _timMembers = await dbGetTeamMembers(timActiveDomain);
+    const { data, error } = await _sb.from('team_members').select('*').order('nama', { ascending: true });
+    if (error) throw error;
+    _timMembers = data || [];
     timPage = 1;
     renderTimList();
   } catch (e) {
@@ -294,7 +282,10 @@ async function loadTeamMembers() {
 function renderTimList() {
   const el = document.getElementById('timList');
   if (!_timMembers.length) {
-    el.innerHTML = `<div class="empty"><div class="icon">👥</div>Belum ada CS terdaftar di ${TIM_TABS.find(t=>t.key===timActiveDomain).label}.</div>`;
+    el.innerHTML = `<div class="empty" style="padding:32px;text-align:center;color:var(--text-3)">
+      <div style="font-size:2rem;margin-bottom:8px">👥</div>
+      <div>Belum ada CS terdaftar. Klik "+ Tambah CS" untuk menambah.</div>
+    </div>`;
     return;
   }
   const totalPages = Math.ceil(_timMembers.length / TIM_PAGE_SIZE);
@@ -304,16 +295,33 @@ function renderTimList() {
 
   const rows = pageItems.map(m => `
     <tr>
-      <td style="font-weight:600">${escapeHtml(m.name)}</td>
+      <td style="font-weight:600">${escapeHtml(m.nama || '')}</td>
       <td style="font-size:.82rem">${escapeHtml(m.no_wa || '-')}</td>
-      <td style="font-size:.78rem;color:var(--text-3)">${escapeHtml(m.role || '-')}</td>
+      <td>
+        <span style="font-size:.72rem;padding:2px 8px;border-radius:20px;font-weight:600;
+          background:${m.role === 'spv' ? 'rgba(67,97,238,.12)' : 'rgba(6,194,112,.12)'};
+          color:${m.role === 'spv' ? 'var(--primary)' : 'var(--success)'}">
+          ${escapeHtml(m.role || 'cs')}
+        </span>
+      </td>
+      <td>
+        <span style="font-size:.72rem;padding:2px 8px;border-radius:20px;font-weight:600;
+          background:${m.aktif ? 'rgba(6,194,112,.12)' : 'rgba(239,35,60,.1)'};
+          color:${m.aktif ? 'var(--success)' : 'var(--danger)'}">
+          ${m.aktif ? 'Aktif' : 'Nonaktif'}
+        </span>
+      </td>
+      <td style="text-align:right">
+        <button onclick="openMemberModal(${m.id})" class="btn btn-outline btn-sm" style="margin-right:4px">✏️ Edit</button>
+        <button onclick="deleteMember(${m.id}, '${escapeHtml(m.nama || '')}')" class="btn btn-sm" style="background:#FEE2E2;color:#EF233C;border:none;cursor:pointer;border-radius:8px;padding:5px 10px;font-size:.78rem;font-weight:700">Hapus</button>
+      </td>
     </tr>
   `).join('');
 
   const pagination = totalPages > 1 ? `
     <div style="display:flex;align-items:center;gap:10px;justify-content:center;padding:16px 0 4px">
       <button class="btn btn-outline btn-sm" onclick="timGoPage(${timPage - 1})" ${timPage <= 1 ? 'disabled' : ''}>← Prev</button>
-      <span style="font-size:.82rem;color:var(--text-2)">Halaman <strong>${timPage}</strong> dari <strong>${totalPages}</strong> (${_timMembers.length} CS)</span>
+      <span style="font-size:.82rem;color:var(--text-2)">Hal <strong>${timPage}</strong>/${totalPages} · ${_timMembers.length} CS</span>
       <button class="btn btn-outline btn-sm" onclick="timGoPage(${timPage + 1})" ${timPage >= totalPages ? 'disabled' : ''}>Next →</button>
     </div>
   ` : `<div style="font-size:.78rem;color:var(--text-3);padding:10px 0 4px">${_timMembers.length} CS terdaftar</div>`;
@@ -321,7 +329,7 @@ function renderTimList() {
   el.innerHTML = `
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Nama CS</th><th>No WhatsApp</th><th>Role</th></tr></thead>
+        <thead><tr><th>Nama CS</th><th>No WhatsApp</th><th>Role</th><th>Status</th><th></th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>
@@ -332,13 +340,113 @@ function renderTimList() {
 function timGoPage(page) {
   timPage = page;
   renderTimList();
-  document.getElementById('timList')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowLeft' && timPage > 1) timGoPage(timPage - 1);
-  if (e.key === 'ArrowRight' && timPage < Math.ceil(_timMembers.length / TIM_PAGE_SIZE)) timGoPage(timPage + 1);
-});
+// ── Modal Tambah/Edit Member ──────────────────────────────────────────────────
+function openMemberModal(id = null) {
+  const member = id ? _timMembers.find(m => m.id === id) : null;
+  const isEdit = !!member;
+
+  let overlay = document.getElementById('memberModalOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'memberModalOverlay';
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `<div class="modal" style="max-width:420px">
+      <div class="modal-header">
+        <h3 id="memberModalTitle">Tambah CS</h3>
+        <button class="modal-close" onclick="closeMemberModal()">✕</button>
+      </div>
+      <div class="modal-body" id="memberModalBody"></div>
+    </div>`;
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeMemberModal(); });
+    document.body.appendChild(overlay);
+  }
+
+  document.getElementById('memberModalTitle').textContent = isEdit ? 'Edit CS' : 'Tambah CS';
+  document.getElementById('memberModalBody').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div>
+        <label style="font-size:.82rem;font-weight:700;color:var(--text-2);display:block;margin-bottom:6px">Nama CS *</label>
+        <input id="mbNama" class="ctrl-input" style="width:100%" placeholder="Contoh: Siti Aminah"
+          value="${escapeHtml(member?.nama || '')}">
+        <div style="font-size:.72rem;color:var(--text-3);margin-top:4px">Harus sama persis dengan cs_nama di data upload</div>
+      </div>
+      <div>
+        <label style="font-size:.82rem;font-weight:700;color:var(--text-2);display:block;margin-bottom:6px">No WhatsApp</label>
+        <input id="mbWa" class="ctrl-input" style="width:100%" placeholder="628123456789 (format internasional)"
+          value="${escapeHtml(member?.no_wa || '')}">
+      </div>
+      <div>
+        <label style="font-size:.82rem;font-weight:700;color:var(--text-2);display:block;margin-bottom:6px">Role</label>
+        <select id="mbRole" class="ctrl-select" style="width:100%">
+          <option value="cs" ${(member?.role || 'cs') === 'cs' ? 'selected' : ''}>CS</option>
+          <option value="spv" ${member?.role === 'spv' ? 'selected' : ''}>Supervisor</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:.82rem;font-weight:700;color:var(--text-2);display:block;margin-bottom:6px">Status</label>
+        <select id="mbAktif" class="ctrl-select" style="width:100%">
+          <option value="true" ${(member?.aktif !== false) ? 'selected' : ''}>Aktif</option>
+          <option value="false" ${member?.aktif === false ? 'selected' : ''}>Nonaktif</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:4px">
+        <button class="btn btn-outline btn-sm" onclick="closeMemberModal()">Batal</button>
+        <button class="btn btn-primary btn-sm" id="btnSaveMember" onclick="saveMember(${id || 'null'})">
+          ${isEdit ? '💾 Simpan' : '+ Tambah'}
+        </button>
+      </div>
+    </div>
+  `;
+  overlay.classList.add('open');
+  document.getElementById('mbNama').focus();
+}
+
+function closeMemberModal() {
+  document.getElementById('memberModalOverlay')?.classList.remove('open');
+}
+
+async function saveMember(id) {
+  const nama  = document.getElementById('mbNama').value.trim();
+  const no_wa = document.getElementById('mbWa').value.trim();
+  const role  = document.getElementById('mbRole').value;
+  const aktif = document.getElementById('mbAktif').value === 'true';
+
+  if (!nama) { showToast('Nama CS wajib diisi', 'error'); return; }
+
+  const btn = document.getElementById('btnSaveMember');
+  if (btn) { btn.textContent = '⏳...'; btn.disabled = true; }
+
+  try {
+    if (id) {
+      const { error } = await _sb.from('team_members').update({ nama, no_wa, role, aktif }).eq('id', id);
+      if (error) throw error;
+      showToast('CS berhasil diupdate', 'success');
+    } else {
+      const { error } = await _sb.from('team_members').insert({ nama, no_wa, role, aktif });
+      if (error) throw error;
+      showToast('CS berhasil ditambahkan', 'success');
+    }
+    closeMemberModal();
+    await loadTeamMembers();
+  } catch (e) {
+    showToast('Gagal simpan: ' + e.message, 'error');
+    if (btn) { btn.textContent = id ? '💾 Simpan' : '+ Tambah'; btn.disabled = false; }
+  }
+}
+
+async function deleteMember(id, nama) {
+  if (!confirm(`Hapus CS "${nama}"? Data ini tidak bisa dikembalikan.`)) return;
+  try {
+    const { error } = await _sb.from('team_members').delete().eq('id', id);
+    if (error) throw error;
+    showToast(`CS "${nama}" berhasil dihapus`, 'success');
+    await loadTeamMembers();
+  } catch (e) {
+    showToast('Gagal hapus: ' + e.message, 'error');
+  }
+}
 </script>
 </body>
 </html>
