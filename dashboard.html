@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — crm-tracking</title>
+<link rel="icon" type="image/png" href="img/logo-adsy.png">
+<link rel="stylesheet" href="css/main.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* ── Dashboard-specific styles ─────────────────────────────── */
+.dash-filter-bar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px 18px; margin-bottom: 20px;
+}
+.dash-filter-bar label { font-size: .78rem; color: var(--text-3); font-weight: 600; }
+.dash-filter-bar input[type=date] {
+  border: 1px solid var(--border); background: var(--input-bg);
+  color: var(--text-1); border-radius: 8px; padding: 6px 10px;
+  font-size: .82rem; font-family: inherit; cursor: pointer;
+}
+.dash-preset {
+  border: 1px solid var(--border); background: var(--input-bg);
+  color: var(--text-2); border-radius: 8px; padding: 6px 12px;
+  font-size: .78rem; font-weight: 600; cursor: pointer;
+  transition: all .15s; white-space: nowrap;
+}
+.dash-preset:hover, .dash-preset.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.dash-refresh {
+  margin-left: auto; border: 1px solid var(--border); background: var(--input-bg);
+  color: var(--text-2); border-radius: 8px; padding: 6px 14px;
+  font-size: .78rem; font-weight: 600; cursor: pointer; transition: all .15s;
+}
+.dash-refresh:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+/* ── Stat grid ─────────────────────────────────────────────── */
+.dash-hero { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+.dash-row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+@media (max-width: 768px) {
+  .dash-hero { grid-template-columns: 1fr; }
+  .dash-row3 { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 480px) {
+  .dash-row3 { grid-template-columns: 1fr; }
+}
+
+.stat-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 18px 20px;
+  transition: background .25s, border-color .25s;
+}
+.stat-label {
+  font-size: .73rem; color: var(--text-3); font-weight: 600;
+  margin-bottom: 6px; line-height: 1.3;
+}
+.stat-num {
+  font-size: 2.4rem; font-weight: 800; line-height: 1;
+  margin-bottom: 4px;
+}
+.stat-num.hero { font-size: 3rem; }
+.stat-sub { font-size: .8rem; font-weight: 600; color: var(--text-2); margin-top: 2px; }
+.stat-note { font-size: .72rem; color: var(--text-3); margin-top: 4px; }
+
+/* ── Attempt breakdown ─────────────────────────────────────── */
+.attempt-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 18px 20px; margin-bottom: 14px;
+}
+.attempt-title { font-size: .9rem; font-weight: 700; margin-bottom: 4px; }
+.attempt-sub { font-size: .75rem; color: var(--text-3); margin-bottom: 16px; }
+.attempt-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.attempt-row:last-child { margin-bottom: 0; }
+.attempt-lbl { font-size: .78rem; font-weight: 600; color: var(--text-2); width: 72px; flex-shrink: 0; }
+.attempt-bar-wrap {
+  flex: 1; height: 14px; background: var(--border); border-radius: 99px; overflow: hidden;
+  display: flex; position: relative;
+}
+.attempt-bar-green { height: 100%; background: var(--success); border-radius: 99px; transition: width .5s; }
+.attempt-bar-yellow { height: 100%; background: var(--warning); transition: width .5s; }
+.attempt-right { font-size: .75rem; color: var(--text-2); white-space: nowrap; width: 120px; text-align: right; flex-shrink: 0; }
+
+/* ── Status proportion bar ─────────────────────────────────── */
+.status-bar-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 18px 20px; margin-bottom: 14px;
+}
+.status-bar-wrap {
+  height: 18px; border-radius: 99px; overflow: hidden;
+  display: flex; margin-bottom: 14px;
+}
+.status-bar-seg { height: 100%; transition: width .5s; }
+.status-legend {
+  display: flex; flex-wrap: wrap; gap: 10px 18px;
+}
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: .75rem; color: var(--text-2); }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── Ekspedisi table ───────────────────────────────────────── */
+.dash-eksp-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 18px 20px; margin-bottom: 14px;
+}
+.dash-eksp-title { font-size: .9rem; font-weight: 700; margin-bottom: 14px; }
+.eksp-table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+.eksp-table th { text-align: left; font-weight: 700; color: var(--text-3); font-size: .72rem; padding: 4px 8px 10px; border-bottom: 1px solid var(--border); }
+.eksp-table td { padding: 8px; border-bottom: 1px solid var(--border); color: var(--text-2); }
+.eksp-table td:first-child { font-weight: 700; color: var(--text-1); }
+.eksp-table tr:last-child td { border-bottom: none; }
+.pill {
+  display: inline-block; padding: 2px 8px; border-radius: 99px;
+  font-size: .7rem; font-weight: 700;
+}
+
+/* ── Loading states ────────────────────────────────────────── */
+.dash-loading {
+  text-align: center; padding: 60px 20px;
+  color: var(--text-3); font-size: .9rem;
+}
+.dash-loading .spinner {
+  width: 32px; height: 32px; border: 3px solid var(--border);
+  border-top-color: var(--primary); border-radius: 50%;
+  animation: spin .8s linear infinite; margin: 0 auto 14px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* colors */
+.c-success { color: var(--success); }
+.c-danger  { color: var(--danger); }
+.c-warning { color: var(--warning); }
+.c-primary { color: var(--primary); }
+.c-text2   { color: var(--text-2); }
+</style>
+</head>
+<body>
+<div id="sidebar-slot"></div>
+<div id="header-slot"></div>
+<div class="main-content">
+  <div class="page" id="pageContent">
+    <div class="dash-loading"><div class="spinner"></div>Memuat dashboard...</div>
+  </div>
+</div>
+
+<script src="js/db.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/app.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="js/upload-configs.js"></script>
+<script src="js/upload-common.js"></script><script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _dashDateTo   = wibYMD();
+let _dashDateFrom = wibYMD().slice(0, 7) + '-01'; // awal bulan ini
+let _dashSkuMap   = new Map();
+let _activePreset = 'bulan-ini';
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+(async () => {
+  await initSupabaseClient();
+  const user = await requireAuth();
+  if (!user) return;
+  _dashSkuMap = await dbGetSkuMap().catch(() => new Map());
+  renderLayout('dashboard', user);
+  renderDashPage();
+  await loadDashboard();
+})();
+
+// ── Render page shell ─────────────────────────────────────────────────────────
+function renderDashPage() {
+  document.getElementById('pageContent').innerHTML = `
+    <div class="dash-filter-bar">
+      <label>Periode</label>
+      <input type="date" id="dashFrom" value="${_dashDateFrom}" onchange="dashSetDate()">
+      <span style="color:var(--text-3);font-size:.8rem">–</span>
+      <input type="date" id="dashTo" value="${_dashDateTo}" onchange="dashSetDate()">
+      <button class="dash-preset ${_activePreset==='bulan-ini'?'active':''}" onclick="dashPreset('bulan-ini')">Bulan Ini</button>
+      <button class="dash-preset ${_activePreset==='7h'?'active':''}"        onclick="dashPreset('7h')">7 Hari</button>
+      <button class="dash-preset ${_activePreset==='14h'?'active':''}"       onclick="dashPreset('14h')">14 Hari</button>
+      <button class="dash-preset ${_activePreset==='30h'?'active':''}"       onclick="dashPreset('30h')">30 Hari</button>
+      <button class="dash-refresh" onclick="dashRefresh()">🔄 Refresh</button>
+    </div>
+    <div id="dashBody">
+      <div class="dash-loading"><div class="spinner"></div>Memuat data...</div>
+    </div>
+  `;
+}
+
+function dashPreset(key) {
+  _activePreset = key;
+  _dashDateTo   = wibYMD();
+  if (key === 'bulan-ini') {
+    _dashDateFrom = wibYMD().slice(0, 7) + '-01';
+  } else {
+    const days = key === '30h' ? 30 : key === '14h' ? 14 : 7;
+    _dashDateFrom = wibYMDOffset(-(days - 1));
+  }
+  document.getElementById('dashFrom').value = _dashDateFrom;
+  document.getElementById('dashTo').value   = _dashDateTo;
+  document.querySelectorAll('.dash-preset').forEach(el => {
+    el.classList.toggle('active', el.textContent.toLowerCase().includes(days + ' '));
+  });
+  loadDashboard();
+}
+
+function dashSetDate() {
+  _dashDateFrom = document.getElementById('dashFrom').value;
+  _dashDateTo   = document.getElementById('dashTo').value;
+  if (!_dashDateFrom || !_dashDateTo) return;
+  _activePreset = 'custom';
+  document.querySelectorAll('.dash-preset').forEach(el => el.classList.remove('active'));
+  loadDashboard();
+}
+
+function dashRefresh() {
+  // Clear cache for current range
+  const key = `cs_orders_${_dashDateFrom}_${_dashDateTo}`;
+  sessionStorage.removeItem(key);
+  loadDashboard();
+}
+
+// ── Load & Compute ────────────────────────────────────────────────────────────
+async function loadDashboard() {
+  const body = document.getElementById('dashBody');
+  if (body) body.innerHTML = '<div class="dash-loading"><div class="spinner"></div>Memuat data...</div>';
+  try {
+    const orders = await dbGetCrmOrders(_dashDateFrom, _dashDateTo, _dashSkuMap);
+    renderDashboard(orders);
+  } catch (e) {
+    if (body) body.innerHTML = `<div class="dash-loading" style="color:var(--danger)">⚠️ Gagal memuat: ${escapeHtml(e.message)}<br><button class="dash-preset" style="margin-top:12px" onclick="loadDashboard()">Coba Lagi</button></div>`;
+  }
+}
+
+// ── Compute Metrics ───────────────────────────────────────────────────────────
+function computeMetrics(orders) {
+  const withResi   = orders.filter(o => !o.id.startsWith('IMP-'));
+  const tracked    = withResi.filter(o => o.status_resi && o.status_resi !== 'BELUM_DICEK' && o.status_resi !== 'MANUAL' && o.status_resi !== 'MANUAL_CEK');
+  const sampai     = tracked.filter(o => o.status_resi === 'SAMPAI');
+  const retur      = tracked.filter(o => o.status_resi === 'RETUR');
+  const bermasalah = tracked.filter(o => o.status_resi === 'BERMASALAH');
+  const dikirim    = tracked.filter(o => o.status_resi === 'DIKIRIM');
+  const otw        = tracked.filter(o => o.status_resi === 'OTW');
+  const manual     = withResi.filter(o => o.status_resi === 'MANUAL' || o.status_resi === 'MANUAL_CEK');
+  const belum      = withResi.filter(o => !o.status_resi || o.status_resi === 'BELUM_DICEK');
+
+  const settled = [...sampai, ...retur];
+  const tingkatSampai = settled.length ? Math.round(sampai.length / settled.length * 100) : null;
+
+  const totalCODAll    = orders.reduce((s, o) => s + (o.total || 0), 0);
+  const totalCODSampai = sampai.reduce((s, o) => s + (o.total || 0), 0);
+
+  // Rata-rata hari kirim: order_date → status_resi_updated_at (SAMPAI)
+  let avgHari = null;
+  const sampaiWithDays = sampai.filter(o => o.order_date && o.status_resi_updated_at);
+  if (sampaiWithDays.length) {
+    const totalDays = sampaiWithDays.reduce((s, o) => {
+      const diff = (new Date(o.status_resi_updated_at) - new Date(o.order_date)) / 86400000;
+      return s + Math.max(0, diff);
+    }, 0);
+    avgHari = (totalDays / sampaiWithDays.length).toFixed(1);
+  }
+
+  // Percobaan antar
+  const totalPercobaan = tracked.reduce((s, o) => s + (o.status_resi_step || 1), 0);
+  const sampai1x   = sampai.filter(o => (o.status_resi_step || 1) <= 1);
+  const pernahGagal = sampai.filter(o => (o.status_resi_step || 1) > 1 || o.bermasalah_since);
+  const nilaiSelamat = pernahGagal.reduce((s, o) => s + (o.total || 0), 0);
+
+  // Attempt breakdown by step
+  const stepGroups = [1, 2, 3].map(step => {
+    const group = step < 3
+      ? tracked.filter(o => (o.status_resi_step || 1) === step)
+      : tracked.filter(o => (o.status_resi_step || 1) >= 3);
+    return {
+      step,
+      total: group.length,
+      sampai: group.filter(o => o.status_resi === 'SAMPAI').length,
+      belumSampai: group.filter(o => o.status_resi !== 'SAMPAI').length,
+    };
+  });
+
+  // Ekspedisi breakdown
+  const ekspMap = {};
+  tracked.forEach(o => {
+    const e = o.ekspedisi || 'Lainnya';
+    if (!ekspMap[e]) ekspMap[e] = { total: 0, sampai: 0, retur: 0, bermasalah: 0, otw: 0, dikirim: 0 };
+    ekspMap[e].total++;
+    if (o.status_resi === 'SAMPAI')     ekspMap[e].sampai++;
+    if (o.status_resi === 'RETUR')      ekspMap[e].retur++;
+    if (o.status_resi === 'BERMASALAH') ekspMap[e].bermasalah++;
+    if (o.status_resi === 'OTW')        ekspMap[e].otw++;
+    if (o.status_resi === 'DIKIRIM')    ekspMap[e].dikirim++;
+  });
+  const ekspRows = Object.entries(ekspMap)
+    .sort((a, b) => b[1].total - a[1].total)
+    .map(([nama, d]) => ({ nama, ...d, pct: d.total ? Math.round(d.sampai / d.total * 100) : 0 }));
+
+  return {
+    totalOrders: orders.length, withResi: withResi.length,
+    tracked: tracked.length, sampai: sampai.length, retur: retur.length,
+    bermasalah: bermasalah.length, dikirim: dikirim.length, otw: otw.length,
+    manual: manual.length, belum: belum.length,
+    settled: settled.length, tingkatSampai,
+    totalCODAll, totalCODSampai, avgHari,
+    totalPercobaan, sampai1x: sampai1x.length, pernahGagal: pernahGagal.length, nilaiSelamat,
+    stepGroups, ekspRows,
+  };
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function renderDashboard(orders) {
+  const m = computeMetrics(orders);
+  const body = document.getElementById('dashBody');
+  if (!body) return;
+
+  // Status bar proportions
+  const total = m.tracked + m.manual + m.belum || 1;
+  const seg = (n) => (n / total * 100).toFixed(1);
+
+  // Attempt bars
+  const maxStep = Math.max(...m.stepGroups.map(g => g.total), 1);
+  const stepBars = m.stepGroups.map(g => {
+    if (!g.total) return '';
+    const wTotal  = (g.total  / maxStep * 100).toFixed(1);
+    const wSampai = g.total ? (g.sampai / g.total * 100).toFixed(1) : 0;
+    const wPending= g.total ? (g.belumSampai / g.total * 100).toFixed(1) : 0;
+    const lbl = g.step < 3 ? `${g.step}x diantar` : `3x+ diantar`;
+    return `
+      <div class="attempt-row">
+        <div class="attempt-lbl">${lbl}</div>
+        <div class="attempt-bar-wrap" style="max-width:${wTotal}%">
+          <div class="attempt-bar-green" style="width:${wSampai}%"></div>
+          <div class="attempt-bar-yellow" style="width:${wPending}%"></div>
+        </div>
+        <div class="attempt-right">${g.total} paket · <span class="c-success">${g.sampai} sampai</span></div>
+      </div>`;
+  }).join('');
+
+  // Ekspedisi rows
+  const ekspHTML = m.ekspRows.length ? m.ekspRows.slice(0, 10).map(e => `
+    <tr>
+      <td>${escapeHtml(e.nama)}</td>
+      <td>${e.total}</td>
+      <td class="c-success">${e.sampai}</td>
+      <td class="c-danger">${e.retur}</td>
+      <td class="c-warning">${e.bermasalah}</td>
+      <td><span class="pill" style="background:${e.pct>=85?'rgba(6,194,112,.15)':e.pct>=60?'rgba(255,183,3,.15)':'rgba(239,35,60,.15)'};color:${e.pct>=85?'var(--success)':e.pct>=60?'var(--warning)':'var(--danger)'}">${e.pct}%</span></td>
+    </tr>`).join('') : '<tr><td colspan="6" style="color:var(--text-3);text-align:center;padding:20px">Belum ada data ekspedisi</td></tr>';
+
+  body.innerHTML = `
+    <!-- Hero row -->
+    <div class="dash-hero">
+      <div class="stat-card">
+        <div class="stat-label">Total paket dikirim</div>
+        <div class="stat-num hero c-primary">${m.withResi.toLocaleString('id-ID')}</div>
+        <div class="stat-sub">${fmtFull(m.totalCODAll)} nilai COD</div>
+        <div class="stat-note">${m.tracked} resi ter-tracking · ${m.belum} belum dicek</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Sampai ke pembeli</div>
+        <div class="stat-num hero c-success">${m.sampai.toLocaleString('id-ID')}</div>
+        <div class="stat-sub c-success">${fmtFull(m.totalCODSampai)} COD</div>
+        <div class="stat-note">${m.settled ? Math.round(m.sampai/m.settled*100) : 0}% dari ${m.settled} yang sudah selesai</div>
+      </div>
+    </div>
+
+    <!-- Row 2 -->
+    <div class="dash-row3">
+      <div class="stat-card">
+        <div class="stat-label">Retur (RTS) sudah kembali</div>
+        <div class="stat-num ${m.retur ? 'c-danger' : 'c-text2'}">${m.retur}</div>
+        <div class="stat-note">${m.bermasalah} paket bermasalah aktif</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Tingkat sampai<br>(dari paket yang sudah selesai)</div>
+        <div class="stat-num ${m.tingkatSampai===null?'c-text2':m.tingkatSampai>=80?'c-success':m.tingkatSampai>=60?'c-warning':'c-danger'}">
+          ${m.tingkatSampai !== null ? m.tingkatSampai + '%' : '—'}
+        </div>
+        <div class="stat-note">${m.sampai} sampai · ${m.retur} retur</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Rata-rata waktu diterima</div>
+        <div class="stat-num c-text2">${m.avgHari ? m.avgHari + ' hr' : '—'}</div>
+        <div class="stat-note">dari tanggal order → diterima pembeli</div>
+      </div>
+    </div>
+
+    <!-- Row 3 -->
+    <div class="dash-row3">
+      <div class="stat-card">
+        <div class="stat-label">Di perjalanan / di hub</div>
+        <div class="stat-num c-primary">${m.dikirim}</div>
+        <div class="stat-note">menuju kota tujuan</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Sedang diantar kurir</div>
+        <div class="stat-num c-warning">${m.otw}</div>
+        <div class="stat-note">dalam proses pengantaran hari ini</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Gagal antar / bermasalah</div>
+        <div class="stat-num ${m.bermasalah ? 'c-danger' : 'c-text2'}">${m.bermasalah}</div>
+        <div class="stat-note">dijadwalkan ulang atau perlu follow up</div>
+      </div>
+    </div>
+
+    <!-- Row 4 -->
+    <div class="dash-row3">
+      <div class="stat-card">
+        <div class="stat-label">Total percobaan antar kurir</div>
+        <div class="stat-num c-text2">${m.totalPercobaan}</div>
+        <div class="stat-note">dari ${m.tracked} paket ter-tracking</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Sampai di percobaan pertama</div>
+        <div class="stat-num c-success">${m.sampai1x}</div>
+        <div class="stat-note">${m.sampai ? Math.round(m.sampai1x/m.sampai*100) : 0}% dari total sampai</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Sempat gagal, akhirnya sampai</div>
+        <div class="stat-num c-warning">${m.pernahGagal}</div>
+        <div class="stat-sub" style="font-size:.75rem">${fmtFull(m.nilaiSelamat)} terselamatkan</div>
+      </div>
+    </div>
+
+    <!-- Delivery attempt breakdown -->
+    <div class="attempt-card">
+      <div class="attempt-title">Jumlah pengantaran per paket</div>
+      <div class="attempt-sub">${m.tracked} paket ter-tracking · ${m.totalPercobaan} total pengantaran</div>
+      ${stepBars || '<div style="color:var(--text-3);font-size:.82rem">Belum ada data percobaan antar</div>'}
+      <div style="display:flex;gap:16px;margin-top:14px">
+        <div style="display:flex;align-items:center;gap:6px;font-size:.73rem;color:var(--text-2)">
+          <div style="width:10px;height:10px;background:var(--success);border-radius:50%"></div> Sampai
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:.73rem;color:var(--text-2)">
+          <div style="width:10px;height:10px;background:var(--warning);border-radius:50%"></div> Belum sampai (antar ulang / proses retur)
+        </div>
+      </div>
+    </div>
+
+    <!-- Status proportion bar -->
+    <div class="status-bar-card">
+      <div style="font-size:.85rem;font-weight:700;margin-bottom:12px">Proporsi Status</div>
+      <div class="status-bar-wrap">
+        <div class="status-bar-seg" style="width:${seg(m.sampai)}%;background:#06C270" title="Sampai ${m.sampai}"></div>
+        <div class="status-bar-seg" style="width:${seg(m.retur)}%;background:#EF233C" title="Retur ${m.retur}"></div>
+        <div class="status-bar-seg" style="width:${seg(m.bermasalah)}%;background:#FFB703" title="Bermasalah ${m.bermasalah}"></div>
+        <div class="status-bar-seg" style="width:${seg(m.dikirim)}%;background:#4361EE" title="Dikirim ${m.dikirim}"></div>
+        <div class="status-bar-seg" style="width:${seg(m.otw)}%;background:#0EA5E9" title="OTW ${m.otw}"></div>
+        <div class="status-bar-seg" style="width:${seg(m.manual + m.belum)}%;background:var(--border)" title="Belum dicek ${m.manual + m.belum}"></div>
+      </div>
+      <div class="status-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#06C270"></div>Sampai ${m.sampai}</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#EF233C"></div>Retur ${m.retur}</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#FFB703"></div>Bermasalah ${m.bermasalah}</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#4361EE"></div>Dikirim ${m.dikirim}</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#0EA5E9"></div>OTW ${m.otw}</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--border)"></div>Belum dicek ${m.manual + m.belum}</div>
+      </div>
+    </div>
+
+    <!-- Per ekspedisi -->
+    <div class="dash-eksp-card">
+      <div class="dash-eksp-title">Breakdown per Ekspedisi</div>
+      <div class="table-wrap">
+        <table class="eksp-table">
+          <thead>
+            <tr>
+              <th>Ekspedisi</th><th>Total</th><th>Sampai</th><th>Retur</th><th>Bermasalah</th><th>Rate</th>
+            </tr>
+          </thead>
+          <tbody>${ekspHTML}</tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="font-size:.72rem;color:var(--text-3);text-align:right;padding-bottom:8px">
+      Data ${_dashDateFrom} s/d ${_dashDateTo} · ${orders.length.toLocaleString('id-ID')} order total · crm-tracking
+    </div>
+  `;
+}
+</script>
+</body>
+</html>

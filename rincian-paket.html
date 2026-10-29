@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rincian Paket — crm-tracking</title>
+<link rel="icon" type="image/png" href="img/logo-adsy.png">
+<link rel="stylesheet" href="css/main.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* ── Filter bar ───────────────────────────────────────────────────── */
+.rp-filter-bar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px 18px; margin-bottom: 16px;
+}
+.rp-filter-bar label { font-size: .78rem; color: var(--text-3); font-weight: 600; white-space: nowrap; }
+.rp-filter-bar input[type=date] {
+  border: 1px solid var(--border); background: var(--input-bg);
+  color: var(--text-1); border-radius: 8px; padding: 6px 10px;
+  font-size: .82rem; font-family: inherit; cursor: pointer;
+}
+.rp-preset {
+  border: 1px solid var(--border); background: var(--input-bg);
+  color: var(--text-2); border-radius: 8px; padding: 6px 12px;
+  font-size: .78rem; font-weight: 600; cursor: pointer; transition: all .15s; white-space: nowrap;
+}
+.rp-preset:hover, .rp-preset.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.rp-refresh {
+  border: 1px solid var(--border); background: var(--input-bg);
+  color: var(--text-2); border-radius: 8px; padding: 6px 14px;
+  font-size: .78rem; font-weight: 600; cursor: pointer; transition: all .15s;
+}
+.rp-refresh:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+.rp-select {
+  border: 1px solid var(--border); background: var(--input-bg); color: var(--text-1);
+  border-radius: 8px; padding: 6px 10px; font-size: .82rem; font-family: inherit; cursor: pointer;
+}
+
+/* ── Summary cards ────────────────────────────────────────────────── */
+.rp-summary {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin-bottom: 16px;
+}
+@media (max-width: 1100px) { .rp-summary { grid-template-columns: repeat(4, 1fr); } }
+@media (max-width: 700px)  { .rp-summary { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 480px)  { .rp-summary { grid-template-columns: repeat(2, 1fr); } }
+.rp-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px 14px; cursor: pointer;
+  transition: border-color .15s, box-shadow .15s;
+}
+.rp-card:hover  { border-color: var(--primary); box-shadow: 0 2px 12px rgba(67,97,238,.1); }
+.rp-card.active { border-color: var(--primary); background: rgba(67,97,238,.06); }
+.rp-card-label  { font-size: .68rem; font-weight: 600; color: var(--text-3); margin-bottom: 4px; line-height: 1.3; }
+.rp-card-num    { font-size: 1.6rem; font-weight: 800; line-height: 1; }
+.rp-card-sub    { font-size: .68rem; color: var(--text-3); margin-top: 3px; }
+
+/* Skeleton */
+.rp-skel { height: 12px; border-radius: 6px; background: var(--border); margin-bottom: 8px; animation: skelPulse 1.2s ease-in-out infinite; }
+.rp-skel.big { height: 26px; width: 55%; margin-bottom: 6px; }
+@keyframes skelPulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* ── Tabs ─────────────────────────────────────────────────────────── */
+.rp-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 14px; }
+.rp-tab {
+  border: 1px solid var(--border); background: var(--input-bg); color: var(--text-2);
+  border-radius: 8px; padding: 6px 14px; font-size: .8rem; font-weight: 600;
+  cursor: pointer; transition: all .15s; white-space: nowrap;
+  display: flex; align-items: center; gap: 6px;
+}
+.rp-tab:hover  { border-color: var(--primary); color: var(--primary); }
+.rp-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.rp-tab-badge {
+  background: rgba(255,255,255,.25); color: inherit;
+  border-radius: 99px; padding: 1px 7px; font-size: .7rem; font-weight: 700;
+}
+.rp-tab:not(.active) .rp-tab-badge { background: var(--border); color: var(--text-3); }
+
+/* ── Table ────────────────────────────────────────────────────────── */
+.rp-table-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 0; overflow: hidden;
+}
+.rp-table-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px; border-bottom: 1px solid var(--border);
+}
+.rp-table-title { font-size: .9rem; font-weight: 700; }
+.rp-table-sub   { font-size: .75rem; color: var(--text-3); margin-top: 2px; }
+.rp-table td, .rp-table th { padding: 9px 12px; }
+.rp-table th { font-size: .72rem; font-weight: 700; color: var(--text-3); white-space: nowrap; }
+.rp-table td { font-size: .8rem; border-top: 1px solid var(--border); }
+.rp-table tbody tr:hover td { background: rgba(67,97,238,.04); }
+
+/* ── Status badge ─────────────────────────────────────────────────── */
+.status-badge {
+  display: inline-block; border-radius: 6px; padding: 2px 8px;
+  font-size: .7rem; font-weight: 700; white-space: nowrap;
+}
+.sb-mandek     { background: rgba(239,35,60,.1);   color: var(--danger);  }
+.sb-bermasalah { background: rgba(239,35,60,.15);  color: var(--danger);  }
+.sb-otw-lama   { background: rgba(255,183,3,.15);  color: #b37d00;        }
+.sb-dikirim    { background: rgba(255,183,3,.1);   color: #b37d00;        }
+.sb-belum      { background: rgba(0,0,0,.06);      color: var(--text-3);  }
+.sb-tanpa-resi { background: rgba(0,0,0,.06);      color: var(--text-3);  }
+.sb-retur      { background: rgba(239,35,60,.1);   color: var(--danger);  }
+
+/* ── Duration badge ───────────────────────────────────────────────── */
+.dur-badge {
+  display: inline-block; border-radius: 6px; padding: 2px 8px;
+  font-size: .72rem; font-weight: 700;
+}
+.dur-red    { background: rgba(239,35,60,.1);  color: var(--danger); }
+.dur-yellow { background: rgba(255,183,3,.12); color: #b37d00; }
+.dur-gray   { background: var(--border);       color: var(--text-3); }
+
+/* ── Notif button ─────────────────────────────────────────────────── */
+.btn-notif {
+  border: 1px solid var(--border); background: var(--input-bg); color: var(--text-2);
+  border-radius: 7px; padding: 4px 10px; font-size: .72rem; font-weight: 600;
+  cursor: pointer; transition: all .15s; white-space: nowrap;
+}
+.btn-notif:hover    { background: #06C270; color: #fff; border-color: #06C270; }
+.btn-notif.sent     { background: #06C270; color: #fff; border-color: #06C270; pointer-events: none; }
+.btn-notif.loading  { opacity: .6; pointer-events: none; }
+
+/* ── Empty & loading ──────────────────────────────────────────────── */
+.rp-empty {
+  text-align: center; padding: 48px 20px; color: var(--text-3); font-size: .85rem;
+}
+.rp-empty .icon { font-size: 2.4rem; margin-bottom: 10px; }
+.rp-loading {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  padding: 40px; color: var(--text-3); font-size: .85rem;
+}
+
+/* ── Pagination ───────────────────────────────────────────────────── */
+.rp-pagination {
+  display: flex; align-items: center; gap: 10px; justify-content: center; padding: 14px 0 4px;
+}
+
+/* ── Mobile ───────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .rp-filter-bar { gap: 7px; padding: 10px 12px; }
+  .rp-table-header { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .rp-table td, .rp-table th { padding: 8px 10px; }
+}
+@media (max-width: 480px) {
+  .rp-filter-bar { flex-direction: column; align-items: stretch; }
+  .rp-filter-bar label { display: none; }
+  .rp-preset, .rp-refresh, .rp-select,
+  .rp-filter-bar input[type=date] { width: 100%; text-align: center; }
+  .rp-card-num { font-size: 1.3rem; }
+}
+</style>
+</head>
+<body>
+<div id="sidebar-slot"></div>
+<div id="header-slot"></div>
+<div class="main-content">
+  <div class="page" id="pageContent"></div>
+</div>
+
+<script src="js/db.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/app.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="js/upload-configs.js"></script>
+<script src="js/upload-common.js"></script><script>
+// ── State ──────────────────────────────────────────────────────────────────────
+let _rpOrders  = [];
+let _rpCsWaMap = {}; // { 'Nama CS': 'no_wa' }
+let _rpTab     = 'mandek';
+let _rpProduk  = '';
+let _rpCS      = '';
+let _rpEksp    = '';
+let _rpPage    = 1;
+const RP_PAGE_SIZE = 15;
+
+let _rpDateTo   = wibYMD();
+let _rpDateFrom = wibYMD().slice(0, 7) + '-01'; // default bulan ini
+let _rpPreset   = 'bulan-ini';
+let _rpSkuMap   = new Map();
+
+// ── Tab definitions ────────────────────────────────────────────────────────────
+const RP_TABS = [
+  { key: 'mandek',       label: 'Mandek',        emoji: '🔴', sub: '> 24 jam tidak bergerak'   },
+  { key: 'bermasalah',   label: 'Bermasalah',     emoji: '🚨', sub: 'Gagal kirim / masalah'     },
+  { key: 'otw-lama',     label: 'OTW Lama',       emoji: '🟠', sub: '> 48 jam masih OTW'        },
+  { key: 'dikirim-lama', label: 'Dikirim Lama',   emoji: '🟡', sub: '> 7 hari belum OTW'        },
+  { key: 'belum-dicek',  label: 'Belum Dicek',    emoji: '⚪', sub: '> 3 hari belum di-tracking' },
+  { key: 'tanpa-resi',   label: 'Tanpa Resi',     emoji: '📭', sub: 'Tidak ada nomor resi'      },
+  { key: 'retur',        label: 'RETUR',          emoji: '↩️', sub: 'Paket sudah di-RTS'        },
+];
+
+// ── Kategorisasi ───────────────────────────────────────────────────────────────
+function rpCategorize(orders) {
+  const now = Date.now();
+  const H24 = 24 * 3600 * 1000;
+  const H48 = 48 * 3600 * 1000;
+  const D3  = 3  * 24 * 3600 * 1000;
+  const D7  = 7  * 24 * 3600 * 1000;
+
+  const result = {};
+  RP_TABS.forEach(t => result[t.key] = []);
+
+  for (const o of orders) {
+    const updAt  = o.status_resi_updated_at ? new Date(o.status_resi_updated_at).getTime() : null;
+    const tgl    = o.order_date ? new Date(o.order_date).getTime() : null;
+    const s      = o.status_resi;
+    const noResi = !o.id || o.id.startsWith('IMP-');
+
+    if (noResi)              { result['tanpa-resi'].push(o);   continue; }
+    if (s === 'RETUR')       { result['retur'].push(o);        continue; }
+    if (s === 'BERMASALAH')  { result['bermasalah'].push(o);   continue; }
+    if (s === 'SAMPAI')      continue; // sudah beres
+
+    if (s === 'OTW' && updAt && (now - updAt) > H48)
+      result['otw-lama'].push(o);
+
+    if (['DIKIRIM','KOTA_TUJUAN'].includes(s) && updAt && (now - updAt) > H24)
+      result['mandek'].push(o);
+
+    if (s === 'DIKIRIM' && tgl && (now - tgl) > D7)
+      result['dikirim-lama'].push(o);
+
+    if (['BELUM_DICEK','MENUNGGU_RESI','MANUAL'].includes(s) && tgl && (now - tgl) > D3)
+      result['belum-dicek'].push(o);
+  }
+
+  return result;
+}
+
+// ── Filter ─────────────────────────────────────────────────────────────────────
+function rpApplyFilter(orders) {
+  return orders.filter(o =>
+    (!_rpProduk || o.produk === _rpProduk) &&
+    (!_rpCS     || o.cs_nama === _rpCS) &&
+    (!_rpEksp   || o.ekspedisi === _rpEksp)
+  );
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function fmtDur(ms) {
+  if (!ms || ms < 0) return '—';
+  const h = Math.floor(ms / 3600000);
+  if (h < 24) return h + ' jam';
+  return Math.floor(h / 24) + ' hari';
+}
+function durClass(ms) {
+  if (!ms) return 'dur-gray';
+  const d = ms / 86400000;
+  return d >= 3 ? 'dur-red' : d >= 1 ? 'dur-yellow' : 'dur-gray';
+}
+function fmtTgl(ymd) {
+  if (!ymd) return '—';
+  return new Date(ymd).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: '2-digit' });
+}
+
+// ── Render shell ───────────────────────────────────────────────────────────────
+function rpRenderPage() {
+  document.getElementById('pageContent').innerHTML = `
+    <div id="rpSummarySection">
+      <div class="rp-summary">
+        ${Array(7).fill(`<div class="rp-card"><div class="rp-skel" style="width:60%"></div><div class="rp-skel big"></div><div class="rp-skel" style="width:80%"></div></div>`).join('')}
+      </div>
+    </div>
+    <div class="rp-filter-bar">
+      <label>Periode</label>
+      <input type="date" id="rpFrom" value="${_rpDateFrom}" onchange="rpSetDate()">
+      <span style="color:var(--text-3);font-size:.8rem">–</span>
+      <input type="date" id="rpTo" value="${_rpDateTo}" onchange="rpSetDate()">
+      <button class="rp-preset ${_rpPreset==='bulan-ini' ?'active':''}" onclick="rpPreset('bulan-ini')">Bulan Ini</button>
+      <button class="rp-preset ${_rpPreset==='bulan-lalu'?'active':''}" onclick="rpPreset('bulan-lalu')">Bulan Lalu</button>
+      <button class="rp-preset ${_rpPreset==='7h'        ?'active':''}" onclick="rpPreset('7h')">7 Hari</button>
+      <button class="rp-preset ${_rpPreset==='14h'       ?'active':''}" onclick="rpPreset('14h')">14 Hari</button>
+      <button class="rp-preset ${_rpPreset==='30h'       ?'active':''}" onclick="rpPreset('30h')">30 Hari</button>
+      <button class="rp-refresh" onclick="rpRefresh()">🔄 Refresh</button>
+    </div>
+    <div id="rpFilterSection">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+        <select class="rp-select" id="rpProdukSel" onchange="rpSetProduk(this.value)"><option value="">Semua Produk</option></select>
+        <select class="rp-select" id="rpCSSel"     onchange="rpSetCS(this.value)"><option value="">Semua CS</option></select>
+        <select class="rp-select" id="rpEkspSel"   onchange="rpSetEksp(this.value)"><option value="">Semua Ekspedisi</option></select>
+      </div>
+    </div>
+    <div id="rpTabs" class="rp-tabs"></div>
+    <div id="rpTable"></div>
+  `;
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────────
+function rpRender() {
+  const filtered = rpApplyFilter(_rpOrders);
+  const cats     = rpCategorize(filtered);
+
+  // Unique options untuk filter
+  const produkSet = [...new Set(_rpOrders.map(o => o.produk).filter(Boolean))].sort();
+  const csSet     = [...new Set(_rpOrders.map(o => o.cs_nama).filter(Boolean))].sort();
+  const ekspSet   = [...new Set(_rpOrders.map(o => o.ekspedisi).filter(Boolean))].sort();
+
+  const selProduk = document.getElementById('rpProdukSel');
+  if (selProduk) selProduk.innerHTML = `<option value="">Semua Produk</option>` +
+    produkSet.map(p => `<option value="${escapeHtml(p)}" ${_rpProduk===p?'selected':''}>${escapeHtml(p)}</option>`).join('');
+  const selCS = document.getElementById('rpCSSel');
+  if (selCS) selCS.innerHTML = `<option value="">Semua CS</option>` +
+    csSet.map(c => `<option value="${escapeHtml(c)}" ${_rpCS===c?'selected':''}>${escapeHtml(c)}</option>`).join('');
+  const selEksp = document.getElementById('rpEkspSel');
+  if (selEksp) selEksp.innerHTML = `<option value="">Semua Ekspedisi</option>` +
+    ekspSet.map(e => `<option value="${escapeHtml(e)}" ${_rpEksp===e?'selected':''}>${escapeHtml(e)}</option>`).join('');
+
+  // Summary cards
+  const summary = document.getElementById('rpSummarySection');
+  if (summary) summary.innerHTML = `<div class="rp-summary">` +
+    RP_TABS.map(t => {
+      const count = cats[t.key].length;
+      const isRed = ['mandek','bermasalah','retur'].includes(t.key);
+      const isYellow = ['otw-lama','dikirim-lama'].includes(t.key);
+      const numColor = isRed ? 'c-danger' : isYellow ? '' : '';
+      const numStyle = isYellow ? 'color:var(--warning)' : '';
+      return `<div class="rp-card ${_rpTab===t.key?'active':''}" onclick="rpSetTab('${t.key}')">
+        <div class="rp-card-label">${t.emoji} ${t.label}</div>
+        <div class="rp-card-num ${numColor}" style="${numStyle}">${count}</div>
+        <div class="rp-card-sub">${t.sub}</div>
+      </div>`;
+    }).join('') + `</div>`;
+
+  // Tabs
+  const tabsEl = document.getElementById('rpTabs');
+  if (tabsEl) tabsEl.innerHTML = RP_TABS.map(t => `
+    <div class="rp-tab ${_rpTab===t.key?'active':''}" onclick="rpSetTab('${t.key}')">
+      ${t.label} <span class="rp-tab-badge">${cats[t.key].length}</span>
+    </div>`).join('');
+
+  // Table
+  rpRenderTable(cats[_rpTab]);
+}
+
+function rpRenderTable(rows) {
+  const el = document.getElementById('rpTable');
+  if (!el) return;
+
+  if (!rows.length) {
+    const t = RP_TABS.find(t => t.key === _rpTab);
+    el.innerHTML = `<div class="rp-table-card"><div class="rp-empty"><div class="icon">✅</div>Tidak ada paket ${t?.label || ''} — bagus!</div></div>`;
+    return;
+  }
+
+  const totalPages = Math.max(1, Math.ceil(rows.length / RP_PAGE_SIZE));
+  if (_rpPage > totalPages) _rpPage = 1;
+  const offset = (_rpPage - 1) * RP_PAGE_SIZE;
+  const pageRows = rows.slice(offset, offset + RP_PAGE_SIZE);
+  const now = Date.now();
+
+  const tableRows = pageRows.map((o, i) => {
+    const updAt = o.status_resi_updated_at ? new Date(o.status_resi_updated_at).getTime() : null;
+    const tgl   = o.order_date ? new Date(o.order_date).getTime() : null;
+
+    // Durasi sesuai tab
+    let durMs = null;
+    if (_rpTab === 'mandek' || _rpTab === 'otw-lama') durMs = updAt ? now - updAt : null;
+    else if (_rpTab === 'dikirim-lama' || _rpTab === 'belum-dicek') durMs = tgl ? now - tgl : null;
+    else if (_rpTab === 'bermasalah' && o.bermasalah_since) durMs = now - new Date(o.bermasalah_since).getTime();
+    else if (_rpTab === 'retur') durMs = updAt ? now - updAt : null;
+    else if (_rpTab === 'tanpa-resi') durMs = tgl ? now - tgl : null;
+
+    const durLabel = _rpTab === 'mandek'       ? 'Mandek'      :
+                     _rpTab === 'otw-lama'     ? 'OTW sejak'   :
+                     _rpTab === 'bermasalah'   ? 'Bermasalah'  :
+                     _rpTab === 'dikirim-lama' ? 'Usia order'  :
+                     _rpTab === 'belum-dicek'  ? 'Usia order'  :
+                     _rpTab === 'retur'        ? 'Di-RTS'      : 'Usia order';
+
+    const statusBadgeClass =
+      o.status_resi === 'BERMASALAH' ? 'sb-bermasalah' :
+      o.status_resi === 'RETUR'      ? 'sb-retur'      :
+      o.status_resi === 'OTW'        ? 'sb-otw-lama'   :
+      o.status_resi === 'DIKIRIM'    ? 'sb-dikirim'    :
+      o.status_resi === 'KOTA_TUJUAN'? 'sb-otw-lama'   : 'sb-belum';
+
+    const statusLabel = o.status_resi || 'Belum Dicek';
+    const noWa = _rpCsWaMap[o.cs_nama] || '';
+
+    return `<tr>
+      <td style="font-size:.7rem;color:var(--text-3);width:28px">${offset + i + 1}</td>
+      <td style="font-weight:600;font-size:.78rem">${escapeHtml(o.id || '—')}</td>
+      <td style="font-size:.8rem">${escapeHtml(o.nama || '—')}</td>
+      <td style="font-size:.78rem">${escapeHtml(o.cs_nama || '—')}</td>
+      <td style="font-size:.78rem">${escapeHtml(o.produk || '—')}</td>
+      <td style="font-size:.78rem">${escapeHtml(o.ekspedisi || '—')}</td>
+      <td style="font-size:.78rem">${escapeHtml(o.kota_tujuan || '—')}</td>
+      <td style="font-size:.75rem;color:var(--text-3)">${fmtTgl(o.order_date)}</td>
+      <td><span class="status-badge ${statusBadgeClass}">${escapeHtml(statusLabel)}</span></td>
+      <td><span class="dur-badge ${durClass(durMs)}">${fmtDur(durMs)}</span><div style="font-size:.65rem;color:var(--text-3);margin-top:2px">${durLabel}</div></td>
+      <td>
+        <button class="btn-notif" id="notif-${escapeHtml(o.id)}"
+          onclick="rpNotifCS('${escapeHtml(o.id)}','${escapeHtml(o.cs_nama)}','${escapeHtml(noWa)}','${escapeHtml(o.ekspedisi||'')}','${escapeHtml(o.kota_tujuan||'')}','${escapeHtml(_rpTab)}')"
+          ${noWa ? '' : 'disabled title="No WA CS tidak ditemukan"'}>
+          ${noWa ? '📲 Notif CS' : '—'}
+        </button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const pagination = totalPages > 1 ? `
+    <div class="rp-pagination">
+      <button class="btn btn-outline btn-sm" onclick="rpGoPage(${_rpPage-1})" ${_rpPage<=1?'disabled':''}>← Prev</button>
+      <span style="font-size:.82rem;color:var(--text-2)">Halaman <strong>${_rpPage}</strong> dari <strong>${totalPages}</strong> (${rows.length} paket)</span>
+      <button class="btn btn-outline btn-sm" onclick="rpGoPage(${_rpPage+1})" ${_rpPage>=totalPages?'disabled':''}>Next →</button>
+    </div>` : `<div style="font-size:.75rem;color:var(--text-3);padding:10px 16px">${rows.length} paket</div>`;
+
+  const t = RP_TABS.find(t => t.key === _rpTab);
+  el.innerHTML = `
+    <div class="rp-table-card">
+      <div class="rp-table-header">
+        <div>
+          <div class="rp-table-title">${t?.emoji} ${t?.label}</div>
+          <div class="rp-table-sub">${t?.sub}</div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="rp-table" style="width:100%">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Resi</th>
+              <th>Nama Pembeli</th>
+              <th>CS</th>
+              <th>Produk</th>
+              <th>Ekspedisi</th>
+              <th>Kota Tujuan</th>
+              <th>Tgl Order</th>
+              <th>Status</th>
+              <th>Durasi</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+      </div>
+      ${pagination}
+    </div>`;
+}
+
+// ── Notif CS ───────────────────────────────────────────────────────────────────
+const NOTIF_MSG = {
+  mandek:        (resi, cs, eksp, kota) => `⚠️ *Paket Mandek*\n\nHalo ${cs}, paket kamu sudah > 24 jam tidak bergerak:\n\n📦 Resi: *${resi}*\n🚚 Ekspedisi: ${eksp||'-'}\n📍 Kota: ${kota||'-'}\n\nCoba cek ke kurir ya! 🙏`,
+  bermasalah:    (resi, cs, eksp, kota) => `🚨 *Paket Bermasalah*\n\nHalo ${cs}, ada paket yang bermasalah:\n\n📦 Resi: *${resi}*\n🚚 Ekspedisi: ${eksp||'-'}\n📍 Kota: ${kota||'-'}\n\nSegera follow up ke kurir! 🙏`,
+  'otw-lama':    (resi, cs, eksp, kota) => `🟠 *Paket OTW Terlalu Lama*\n\nHalo ${cs}, paket sudah > 48 jam masih OTW:\n\n📦 Resi: *${resi}*\n🚚 Ekspedisi: ${eksp||'-'}\n📍 Kota: ${kota||'-'}\n\nCek status ke kurir ya! 🙏`,
+  'dikirim-lama':(resi, cs, eksp, kota) => `🟡 *Paket Lama Tidak Update*\n\nHalo ${cs}, paket sudah > 7 hari belum OTW:\n\n📦 Resi: *${resi}*\n🚚 Ekspedisi: ${eksp||'-'}\n📍 Kota: ${kota||'-'}\n\nTolong dicek ke kurir! 🙏`,
+  'belum-dicek': (resi, cs, eksp, kota) => `⚪ *Paket Belum Di-tracking*\n\nHalo ${cs}, paket belum ada update tracking > 3 hari:\n\n📦 Resi: *${resi}*\n🚚 Ekspedisi: ${eksp||'-'}\n📍 Kota: ${kota||'-'}\n\nTolong dicek ya! 🙏`,
+  'tanpa-resi':  (resi, cs, eksp, kota) => `📭 *Order Belum Ada Resi*\n\nHalo ${cs}, ada order yang belum punya nomor resi.\n\nNama: ${resi}\nSegera input nomor resi ya! 🙏`,
+  retur:         (resi, cs, eksp, kota) => `↩️ *Paket Retur (RTS)*\n\nHalo ${cs}, paket kamu sudah di-RTS:\n\n📦 Resi: *${resi}*\n🚚 Ekspedisi: ${eksp||'-'}\n📍 Kota: ${kota||'-'}\n\nTolong tindak lanjuti! 🙏`,
+};
+
+async function rpNotifCS(resi, csNama, noWa, eksp, kota, tab) {
+  if (!noWa) { showToast('No WA CS tidak ditemukan', 'error'); return; }
+  const btn = document.getElementById('notif-' + resi);
+  if (btn) { btn.classList.add('loading'); btn.textContent = '⏳ Mengirim...'; }
+
+  const msgFn = NOTIF_MSG[tab] || NOTIF_MSG['bermasalah'];
+  const message = msgFn(resi, csNama, eksp, kota);
+
+  try {
+    const r = await fetch('/api/notif-proxy?action=send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: noWa, message }),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Gagal kirim');
+    if (btn) { btn.classList.remove('loading'); btn.classList.add('sent'); btn.textContent = '✅ Terkirim'; }
+    showToast(`Notif terkirim ke ${csNama}`, 'success');
+  } catch (e) {
+    if (btn) { btn.classList.remove('loading'); btn.textContent = '📲 Notif CS'; }
+    showToast('Gagal kirim: ' + e.message, 'error');
+  }
+}
+
+// ── Load ───────────────────────────────────────────────────────────────────────
+async function rpLoad() {
+  const tbl = document.getElementById('rpTable');
+  if (tbl) tbl.innerHTML = `<div class="rp-loading"><div class="spinner"></div>Memuat data...</div>`;
+  try {
+    _rpOrders = await dbGetCrmOrders(_rpDateFrom, _rpDateTo, _rpSkuMap);
+    rpRender();
+  } catch (e) {
+    if (tbl) tbl.innerHTML = `<div class="rp-loading" style="color:var(--danger)">⚠️ Gagal: ${escapeHtml(e.message)}<br><button class="rp-preset" style="margin-top:12px" onclick="rpLoad()">Coba Lagi</button></div>`;
+  }
+}
+
+async function rpLoadCsWaMap() {
+  try {
+    const r = await fetch('/api/cs-profiles');
+    if (!r.ok) return;
+    const profiles = await r.json();
+    profiles.forEach(p => { if (p.nama && p.no_wa) _rpCsWaMap[p.nama] = p.no_wa; });
+  } catch (_) {}
+}
+
+// ── Event handlers ─────────────────────────────────────────────────────────────
+function rpSetTab(key)    { _rpTab = key; _rpPage = 1; rpRender(); }
+function rpSetProduk(v)   { _rpProduk = v; _rpPage = 1; rpRender(); }
+function rpSetCS(v)       { _rpCS = v;     _rpPage = 1; rpRender(); }
+function rpSetEksp(v)     { _rpEksp = v;   _rpPage = 1; rpRender(); }
+function rpGoPage(p)      { _rpPage = p; rpRenderTable(rpCategorize(rpApplyFilter(_rpOrders))[_rpTab]); document.getElementById('rpTable')?.scrollIntoView({ behavior:'smooth', block:'start' }); }
+
+function rpPreset(key) {
+  _rpPreset = key;
+  if (key === 'bulan-ini') {
+    _rpDateFrom = wibYMD().slice(0, 7) + '-01';
+    _rpDateTo   = wibYMD();
+  } else if (key === 'bulan-lalu') {
+    const now  = new Date();
+    const y    = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+    const m    = now.getMonth() === 0 ? 12 : now.getMonth(); // bulan lalu (1-based)
+    const mm   = String(m).padStart(2, '0');
+    const last = new Date(y, m, 0).getDate(); // hari terakhir bulan lalu
+    _rpDateFrom = `${y}-${mm}-01`;
+    _rpDateTo   = `${y}-${mm}-${last}`;
+  } else {
+    const d = key === '30h' ? 29 : key === '14h' ? 13 : 6;
+    _rpDateFrom = wibYMDOffset(-d);
+    _rpDateTo   = wibYMD();
+  }
+  document.getElementById('rpFrom').value = _rpDateFrom;
+  document.getElementById('rpTo').value   = _rpDateTo;
+  document.querySelectorAll('.rp-preset').forEach(el => el.classList.remove('active'));
+  event.target.classList.add('active');
+  rpLoad();
+}
+
+function rpSetDate() {
+  _rpDateFrom = document.getElementById('rpFrom').value;
+  _rpDateTo   = document.getElementById('rpTo').value;
+  if (!_rpDateFrom || !_rpDateTo) return;
+  _rpPreset = 'custom';
+  document.querySelectorAll('.rp-preset').forEach(el => el.classList.remove('active'));
+  rpLoad();
+}
+
+function rpRefresh() {
+  sessionStorage.removeItem(`cs_orders_${_rpDateFrom}_${_rpDateTo}`);
+  rpLoad();
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+(async () => {
+  await initSupabaseClient();
+  const user = await requireAuth();
+  if (!user) return;
+  _rpSkuMap = await dbGetSkuMap().catch(() => new Map());
+  renderLayout('rincian-paket', user);
+  rpRenderPage();
+  await Promise.all([rpLoad(), rpLoadCsWaMap()]);
+})();
+</script>
+</body>
+</html>

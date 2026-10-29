@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rekap Laporan — crm-tracking</title>
+<link rel="icon" type="image/png" href="img/logo-adsy.png">
+<link rel="stylesheet" href="css/main.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* ── Summary cards ────────────────────────────────────────────────── */
+.rl-summary {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px;
+}
+@media (max-width: 768px) { .rl-summary { grid-template-columns: repeat(2, 1fr); } }
+.rl-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 16px 18px;
+}
+.rl-card-label { font-size: .72rem; font-weight: 600; color: var(--text-3); margin-bottom: 6px; }
+.rl-card-num   { font-size: 2rem; font-weight: 800; line-height: 1; }
+.rl-card-sub   { font-size: .72rem; color: var(--text-3); margin-top: 4px; }
+
+/* Skeleton */
+.rl-skel { height: 12px; border-radius: 6px; background: var(--border); margin-bottom: 8px; animation: rlPulse 1.2s ease-in-out infinite; }
+.rl-skel.big { height: 28px; width: 55%; margin-bottom: 6px; }
+@keyframes rlPulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* ── Filter bar ───────────────────────────────────────────────────── */
+.rl-filter {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 10px 16px; margin-bottom: 16px;
+}
+.rl-select {
+  border: 1px solid var(--border); background: var(--input-bg); color: var(--text-1);
+  border-radius: 8px; padding: 6px 10px; font-size: .82rem; font-family: inherit; cursor: pointer;
+}
+.rl-preset {
+  border: 1px solid var(--border); background: var(--input-bg); color: var(--text-2);
+  border-radius: 8px; padding: 6px 12px; font-size: .78rem; font-weight: 600; cursor: pointer; transition: all .15s;
+}
+.rl-preset:hover, .rl-preset.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.rl-filter input[type=date] {
+  border: 1px solid var(--border); background: var(--input-bg);
+  color: var(--text-1); border-radius: 8px; padding: 6px 10px;
+  font-size: .82rem; font-family: inherit; cursor: pointer;
+}
+.rl-refresh { border: 1px solid var(--border); background: var(--input-bg); color: var(--text-2); border-radius: 8px; padding: 6px 14px; font-size: .78rem; font-weight: 600; cursor: pointer; transition: all .15s; }
+.rl-refresh:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+/* ── Section cards ────────────────────────────────────────────────── */
+.rl-section {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 14px; margin-bottom: 16px; overflow: hidden;
+}
+.rl-section-header {
+  padding: 14px 18px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.rl-section-title { font-size: .9rem; font-weight: 700; }
+.rl-section-sub   { font-size: .75rem; color: var(--text-3); margin-top: 2px; }
+
+/* ── Ekspedisi breakdown ──────────────────────────────────────────── */
+.rl-eksp-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px; padding: 16px;
+}
+.rl-eksp-card {
+  border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px;
+}
+.rl-eksp-name  { font-size: .88rem; font-weight: 700; margin-bottom: 10px; }
+.rl-eksp-row   { display: flex; justify-content: space-between; font-size: .78rem; margin-bottom: 4px; }
+.rl-eksp-label { color: var(--text-3); }
+.rl-eksp-val   { font-weight: 600; }
+.rl-bar-wrap   { height: 6px; background: var(--border); border-radius: 99px; margin-top: 10px; overflow: hidden; }
+.rl-bar-fill   { height: 100%; border-radius: 99px; transition: width .5s; }
+
+/* ── Table ────────────────────────────────────────────────────────── */
+.rl-table td, .rl-table th { padding: 9px 14px; }
+.rl-table th { font-size: .72rem; font-weight: 700; color: var(--text-3); white-space: nowrap; }
+.rl-table td { font-size: .8rem; border-top: 1px solid var(--border); }
+.rl-table tbody tr:hover td { background: rgba(67,97,238,.03); }
+
+/* ── Status pill ──────────────────────────────────────────────────── */
+.rl-pill {
+  display: inline-block; border-radius: 6px; padding: 2px 9px;
+  font-size: .72rem; font-weight: 700;
+}
+.rl-pill-invst  { background: rgba(123,47,190,.12); color: #7B2FBE; }
+.rl-pill-lapor  { background: rgba(67,97,238,.1);   color: var(--primary); }
+.rl-pill-ok     { background: rgba(6,194,112,.1);   color: var(--success); }
+
+.rl-loading { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 48px; color: var(--text-3); }
+.rl-pagination { display: flex; align-items: center; gap: 10px; justify-content: center; padding: 14px 0 4px; }
+
+/* ── Mobile ───────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .rl-filter { gap: 7px; padding: 10px 12px; }
+  .rl-eksp-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; padding: 12px; }
+  .rl-table td, .rl-table th { padding: 8px 10px; }
+  .rl-section-header { flex-direction: column; align-items: flex-start; gap: 4px; }
+}
+@media (max-width: 480px) {
+  .rl-summary { grid-template-columns: 1fr 1fr; }
+  .rl-card-num { font-size: 1.5rem; }
+  .rl-filter { flex-direction: column; align-items: stretch; }
+  .rl-filter label { display: none; }
+  .rl-preset, .rl-refresh, .rl-select,
+  .rl-filter input[type=date] { width: 100%; text-align: center; }
+  .rl-eksp-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+<div id="sidebar-slot"></div>
+<div id="header-slot"></div>
+<div class="main-content">
+  <div class="page" id="pageContent"></div>
+</div>
+
+<script src="js/db.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/app.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="js/upload-configs.js"></script>
+<script src="js/upload-common.js"></script><script>
+// ── State ──────────────────────────────────────────────────────────────────────
+let _rlData     = []; // semua room_work yang lapor_ekspedisi = true
+let _rlCS       = '';
+let _rlEksp     = '';
+let _rlStatus   = ''; // '' | 'investigasi' | 'pending'
+let _rlPage     = 1;
+const RL_PAGE_SIZE = 20;
+
+let _rlDateTo   = wibYMD();
+let _rlDateFrom = wibYMD().slice(0, 7) + '-01';
+let _rlPreset   = 'bulan-ini';
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function fmtTgl(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: '2-digit' });
+}
+function fmtDurDays(iso) {
+  if (!iso) return '—';
+  const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  return d === 0 ? 'Hari ini' : `${d} hari lalu`;
+}
+
+// ── Render shell ───────────────────────────────────────────────────────────────
+function rlRenderPage() {
+  document.getElementById('pageContent').innerHTML = `
+    <div id="rlSummary">
+      <div class="rl-summary">
+        ${Array(4).fill(`<div class="rl-card"><div class="rl-skel" style="width:60%"></div><div class="rl-skel big"></div><div class="rl-skel" style="width:75%"></div></div>`).join('')}
+      </div>
+    </div>
+    <div class="rl-filter">
+      <label style="font-size:.78rem;color:var(--text-3);font-weight:600">Periode</label>
+      <input type="date" id="rlFrom" value="${_rlDateFrom}" onchange="rlSetDate()">
+      <span style="color:var(--text-3);font-size:.8rem">–</span>
+      <input type="date" id="rlTo" value="${_rlDateTo}" onchange="rlSetDate()">
+      <button class="rl-preset ${_rlPreset==='bulan-ini' ?'active':''}" onclick="rlPreset('bulan-ini')">Bulan Ini</button>
+      <button class="rl-preset ${_rlPreset==='bulan-lalu'?'active':''}" onclick="rlPreset('bulan-lalu')">Bulan Lalu</button>
+      <select class="rl-select" id="rlCSSel"     onchange="rlSetCS(this.value)"><option value="">Semua CS</option></select>
+      <select class="rl-select" id="rlEkspSel"   onchange="rlSetEksp(this.value)"><option value="">Semua Ekspedisi</option></select>
+      <select class="rl-select" id="rlStatusSel" onchange="rlSetStatus(this.value)">
+        <option value="">Semua Status</option>
+        <option value="investigasi">🔍 Investigasi</option>
+        <option value="pending">⏳ Pending</option>
+      </select>
+      <button class="rl-refresh" onclick="rlLoad()">🔄 Refresh</button>
+    </div>
+    <div id="rlBody"><div class="rl-loading"><div class="spinner"></div>Memuat data...</div></div>
+  `;
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────────
+function rlRender() {
+  const filtered = rlFiltered();
+
+  // Update dropdowns
+  const csSet   = [...new Set(_rlData.map(o => o.cs_nama).filter(Boolean))].sort();
+  const ekspSet = [...new Set(_rlData.map(o => o.ekspedisi).filter(Boolean))].sort();
+  const selCS   = document.getElementById('rlCSSel');
+  const selEksp = document.getElementById('rlEkspSel');
+  if (selCS)   selCS.innerHTML   = `<option value="">Semua CS</option>` + csSet.map(c => `<option value="${escapeHtml(c)}" ${_rlCS===c?'selected':''}>${escapeHtml(c)}</option>`).join('');
+  if (selEksp) selEksp.innerHTML = `<option value="">Semua Ekspedisi</option>` + ekspSet.map(e => `<option value="${escapeHtml(e)}" ${_rlEksp===e?'selected':''}>${escapeHtml(e)}</option>`).join('');
+
+  const total       = filtered.length;
+  const investigasi = filtered.filter(o => o.investigasi).length;
+  const pending     = filtered.filter(o => !o.investigasi).length;
+  const successRate = total > 0 ? (((total - investigasi) / total) * 100).toFixed(1) : '—';
+
+  // Summary cards
+  const summary = document.getElementById('rlSummary');
+  if (summary) summary.innerHTML = `<div class="rl-summary">
+    <div class="rl-card">
+      <div class="rl-card-label">📤 Total Lapor Ekspedisi</div>
+      <div class="rl-card-num c-primary">${total}</div>
+      <div class="rl-card-sub">Sudah dilaporkan</div>
+    </div>
+    <div class="rl-card">
+      <div class="rl-card-label">⏳ Pending (Menunggu Hasil)</div>
+      <div class="rl-card-num" style="color:var(--warning)">${pending}</div>
+      <div class="rl-card-sub">Belum ada update balik</div>
+    </div>
+    <div class="rl-card">
+      <div class="rl-card-label">🔍 Investigasi (Tetap Retur)</div>
+      <div class="rl-card-num c-danger">${investigasi}</div>
+      <div class="rl-card-sub">Paket tetap kembali</div>
+    </div>
+    <div class="rl-card">
+      <div class="rl-card-label">✅ Success Rate</div>
+      <div class="rl-card-num c-success">${successRate}${successRate !== '—' ? '%' : ''}</div>
+      <div class="rl-card-sub">Berhasil tidak retur</div>
+    </div>
+  </div>`;
+
+  // Render body
+  const body = document.getElementById('rlBody');
+  if (!body) return;
+
+  if (!total) {
+    body.innerHTML = `<div class="rl-section"><div class="rl-loading">📭 Belum ada data laporan ekspedisi</div></div>`;
+    return;
+  }
+
+  body.innerHTML = rlEkspBreakdownHtml(filtered) + rlTableHtml(filtered);
+}
+
+// ── Ekspedisi breakdown ────────────────────────────────────────────────────────
+function rlEkspBreakdownHtml(rows) {
+  const ekspMap = {};
+  rows.forEach(o => {
+    const e = o.ekspedisi || 'Lainnya';
+    if (!ekspMap[e]) ekspMap[e] = { total: 0, investigasi: 0 };
+    ekspMap[e].total++;
+    if (o.investigasi) ekspMap[e].investigasi++;
+  });
+
+  const cards = Object.entries(ekspMap)
+    .sort((a, b) => b[1].total - a[1].total)
+    .map(([eksp, d]) => {
+      const successRate = d.total > 0 ? ((d.total - d.investigasi) / d.total * 100).toFixed(0) : 0;
+      const rateColor   = successRate >= 80 ? '#06C270' : successRate >= 60 ? '#FFB703' : '#EF233C';
+      return `<div class="rl-eksp-card">
+        <div class="rl-eksp-name">🚚 ${escapeHtml(eksp)}</div>
+        <div class="rl-eksp-row"><span class="rl-eksp-label">Total Lapor</span><span class="rl-eksp-val">${d.total}</span></div>
+        <div class="rl-eksp-row"><span class="rl-eksp-label">Investigasi</span><span class="rl-eksp-val" style="color:var(--danger)">${d.investigasi}</span></div>
+        <div class="rl-eksp-row"><span class="rl-eksp-label">Success Rate</span><span class="rl-eksp-val" style="color:${rateColor}">${successRate}%</span></div>
+        <div class="rl-bar-wrap">
+          <div class="rl-bar-fill" style="width:${successRate}%;background:${rateColor}"></div>
+        </div>
+      </div>`;
+    }).join('');
+
+  return `<div class="rl-section">
+    <div class="rl-section-header">
+      <div>
+        <div class="rl-section-title">📊 Breakdown per Ekspedisi</div>
+        <div class="rl-section-sub">Success rate = paket yang tidak balik setelah dilaporkan</div>
+      </div>
+    </div>
+    <div class="rl-eksp-grid">${cards}</div>
+  </div>`;
+}
+
+// ── Detail table ───────────────────────────────────────────────────────────────
+function rlTableHtml(rows) {
+  const totalPages = Math.max(1, Math.ceil(rows.length / RL_PAGE_SIZE));
+  if (_rlPage > totalPages) _rlPage = 1;
+  const offset   = (_rlPage - 1) * RL_PAGE_SIZE;
+  const pageRows = rows.slice(offset, offset + RL_PAGE_SIZE);
+
+  const tableRows = pageRows.map((o, i) => {
+    const statusPill = o.investigasi
+      ? `<span class="rl-pill rl-pill-invst">🔍 Investigasi</span>`
+      : `<span class="rl-pill rl-pill-lapor">⏳ Pending</span>`;
+
+    return `<tr>
+      <td style="font-size:.7rem;color:var(--text-3)">${offset + i + 1}</td>
+      <td style="font-weight:600;font-size:.78rem">${escapeHtml(o.resi || '—')}</td>
+      <td style="font-size:.78rem">${escapeHtml(o.nama_pembeli || '—')}</td>
+      <td style="font-size:.78rem">${escapeHtml(o.cs_nama || '—')}</td>
+      <td style="font-size:.78rem">${escapeHtml(o.ekspedisi || '—')}</td>
+      <td style="font-size:.78rem">${escapeHtml(o.kota_tujuan || '—')}</td>
+      <td style="font-size:.75rem;color:var(--danger);font-weight:600">${escapeHtml(o.case_undel || '—')}</td>
+      <td style="font-size:.75rem;color:var(--text-3)">${fmtTgl(o.lapor_ekspedisi_at)}</td>
+      <td style="font-size:.75rem;color:var(--text-3)">${o.investigasi_at ? fmtTgl(o.investigasi_at) : '—'}</td>
+      <td>${statusPill}</td>
+    </tr>`;
+  }).join('');
+
+  const pagination = totalPages > 1 ? `
+    <div class="rl-pagination">
+      <button class="btn btn-outline btn-sm" onclick="rlGoPage(${_rlPage-1})" ${_rlPage<=1?'disabled':''}>← Prev</button>
+      <span style="font-size:.82rem;color:var(--text-2)">Halaman <strong>${_rlPage}</strong> dari <strong>${totalPages}</strong> (${rows.length} paket)</span>
+      <button class="btn btn-outline btn-sm" onclick="rlGoPage(${_rlPage+1})" ${_rlPage>=totalPages?'disabled':''}>Next →</button>
+    </div>` : `<div style="font-size:.75rem;color:var(--text-3);padding:10px 16px">${rows.length} paket</div>`;
+
+  return `<div class="rl-section">
+    <div class="rl-section-header">
+      <div>
+        <div class="rl-section-title">📋 Detail Paket Laporan</div>
+        <div class="rl-section-sub">${rows.length} paket sudah dilaporkan ke ekspedisi</div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="rl-table" style="width:100%">
+        <thead><tr>
+          <th>#</th><th>Resi</th><th>Nama Pembeli</th><th>CS</th>
+          <th>Ekspedisi</th><th>Kota</th><th>Case Undel</th>
+          <th>Tgl Lapor</th><th>Tgl Investigasi</th><th>Status</th>
+        </tr></thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+    </div>
+    ${pagination}
+  </div>`;
+}
+
+// ── Filter & Event handlers ────────────────────────────────────────────────────
+function rlFiltered() {
+  return _rlData.filter(o => {
+    const lapAt = o.lapor_ekspedisi_at || o.created_at;
+    if (_rlDateFrom && lapAt < _rlDateFrom) return false;
+    if (_rlDateTo   && lapAt.slice(0,10) > _rlDateTo) return false;
+    if (_rlCS   && o.cs_nama   !== _rlCS)   return false;
+    if (_rlEksp && o.ekspedisi !== _rlEksp) return false;
+    if (_rlStatus === 'investigasi' && !o.investigasi) return false;
+    if (_rlStatus === 'pending'     &&  o.investigasi) return false;
+    return true;
+  });
+}
+
+function rlSetCS(v)     { _rlCS = v;     _rlPage = 1; rlRender(); }
+function rlSetEksp(v)   { _rlEksp = v;   _rlPage = 1; rlRender(); }
+function rlSetStatus(v) { _rlStatus = v; _rlPage = 1; rlRender(); }
+function rlGoPage(p)    { _rlPage = p; document.getElementById('rlBody')?.scrollIntoView({ behavior:'smooth', block:'start' }); rlRender(); }
+
+function rlPreset(key) {
+  _rlPreset = key;
+  if (key === 'bulan-ini') {
+    _rlDateFrom = wibYMD().slice(0, 7) + '-01';
+    _rlDateTo   = wibYMD();
+  } else if (key === 'bulan-lalu') {
+    const now = new Date();
+    const y   = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+    const m   = now.getMonth() === 0 ? 12 : now.getMonth();
+    const mm  = String(m).padStart(2, '0');
+    const last = new Date(y, m, 0).getDate();
+    _rlDateFrom = `${y}-${mm}-01`;
+    _rlDateTo   = `${y}-${mm}-${last}`;
+  } else {
+    _rlDateFrom = wibYMDOffset(-29);
+    _rlDateTo   = wibYMD();
+  }
+  document.getElementById('rlFrom').value = _rlDateFrom;
+  document.getElementById('rlTo').value   = _rlDateTo;
+  document.querySelectorAll('.rl-preset').forEach(el => el.classList.remove('active'));
+  event.target.classList.add('active');
+  rlRender();
+}
+
+function rlSetDate() {
+  _rlDateFrom = document.getElementById('rlFrom').value;
+  _rlDateTo   = document.getElementById('rlTo').value;
+  if (!_rlDateFrom || !_rlDateTo) return;
+  _rlPreset = 'custom';
+  document.querySelectorAll('.rl-preset').forEach(el => el.classList.remove('active'));
+  rlRender();
+}
+
+// ── Load ───────────────────────────────────────────────────────────────────────
+async function rlLoad() {
+  const body = document.getElementById('rlBody');
+  if (body) body.innerHTML = `<div class="rl-loading"><div class="spinner"></div>Memuat data...</div>`;
+  try {
+    const r = await fetch('/api/room-work?tab=lapor&limit=1000');
+    if (!r.ok) throw new Error((await r.json()).error || `HTTP ${r.status}`);
+    _rlData = await r.json();
+    rlRender();
+  } catch (e) {
+    if (body) body.innerHTML = `<div class="rl-loading" style="color:var(--danger)">⚠️ Gagal: ${escapeHtml(e.message)}<br><button class="btn btn-outline btn-sm" style="margin-top:12px" onclick="rlLoad()">Coba Lagi</button></div>`;
+  }
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+(async () => {
+  await initSupabaseClient();
+  const user = await requireAuth();
+  if (!user) return;
+  renderLayout('rekap-laporan', user);
+  rlRenderPage();
+  await rlLoad();
+})();
+</script>
+</body>
+</html>

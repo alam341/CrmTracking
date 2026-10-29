@@ -1,0 +1,19 @@
+{
+  "functions": {
+    "api/tracking-check.js": {
+      "maxDuration": 30
+    },
+    "api/mengantar-webhook.js": {
+      "maxDuration": 30
+    },
+    "api/run-check.js": {
+      "maxDuration": 60
+    },
+    "api/backfill-roomwork.js": {
+      "maxDuration": 60
+    },
+    "api/backfill-tracking.js": {
+      "maxDuration": 60
+    }
+  }
+}

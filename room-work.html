@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Room Work — crm-tracking</title>
+<link rel="icon" type="image/png" href="img/logo-adsy.png">
+<link rel="stylesheet" href="css/main.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* ── Summary cards ────────────────────────────────────────────────── */
+.rw-summary {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin-bottom: 16px;
+}
+@media (max-width: 1200px) { .rw-summary { grid-template-columns: repeat(4, 1fr); } }
+@media (max-width: 700px)  { .rw-summary { grid-template-columns: repeat(2, 1fr); } }
+.rw-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px 16px; cursor: pointer;
+  transition: border-color .15s, box-shadow .15s;
+}
+.rw-card:hover  { border-color: var(--primary); box-shadow: 0 2px 12px rgba(67,97,238,.1); }
+.rw-card.active { border-color: var(--primary); background: rgba(67,97,238,.06); }
+.rw-card-label  { font-size: .68rem; font-weight: 600; color: var(--text-3); margin-bottom: 4px; }
+.rw-card-num    { font-size: 1.6rem; font-weight: 800; line-height: 1; }
+.rw-card-sub    { font-size: .68rem; color: var(--text-3); margin-top: 3px; }
+
+/* Skeleton */
+.rw-skel { height: 12px; border-radius: 6px; background: var(--border); margin-bottom: 8px; animation: rwPulse 1.2s ease-in-out infinite; }
+.rw-skel.big { height: 26px; width: 55%; margin-bottom: 6px; }
+@keyframes rwPulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* ── Filter & Tabs ────────────────────────────────────────────────── */
+.rw-topbar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 10px 16px; margin-bottom: 14px;
+}
+.rw-search {
+  flex: 1; min-width: 180px; border: 1px solid var(--border); background: var(--input-bg);
+  color: var(--text-1); border-radius: 8px; padding: 6px 12px; font-size: .82rem; font-family: inherit;
+}
+.rw-select {
+  border: 1px solid var(--border); background: var(--input-bg); color: var(--text-1);
+  border-radius: 8px; padding: 6px 10px; font-size: .82rem; font-family: inherit; cursor: pointer;
+}
+.rw-refresh {
+  border: 1px solid var(--border); background: var(--input-bg); color: var(--text-2);
+  border-radius: 8px; padding: 6px 14px; font-size: .78rem; font-weight: 600; cursor: pointer;
+  transition: all .15s; margin-left: auto;
+}
+.rw-refresh:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+.rw-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 14px; }
+.rw-tab {
+  border: 1px solid var(--border); background: var(--input-bg); color: var(--text-2);
+  border-radius: 8px; padding: 6px 14px; font-size: .8rem; font-weight: 600;
+  cursor: pointer; transition: all .15s; display: flex; align-items: center; gap: 6px;
+}
+.rw-tab:hover  { border-color: var(--primary); color: var(--primary); }
+.rw-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.rw-badge {
+  border-radius: 99px; padding: 1px 7px; font-size: .7rem; font-weight: 700;
+  background: rgba(255,255,255,.25); color: inherit;
+}
+.rw-tab:not(.active) .rw-badge { background: var(--border); color: var(--text-3); }
+
+/* ── Table ────────────────────────────────────────────────────────── */
+.rw-table-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
+}
+.rw-table-header { padding: 14px 18px; border-bottom: 1px solid var(--border); }
+.rw-table-title  { font-size: .9rem; font-weight: 700; }
+.rw-table td, .rw-table th { padding: 9px 12px; }
+.rw-table th { font-size: .72rem; font-weight: 700; color: var(--text-3); white-space: nowrap; }
+.rw-table td { font-size: .8rem; border-top: 1px solid var(--border); vertical-align: middle; }
+.rw-table tbody tr:hover td { background: rgba(67,97,238,.03); }
+
+/* ── FU badges ────────────────────────────────────────────────────── */
+.fu-badge {
+  display: inline-block; border-radius: 6px; padding: 2px 8px;
+  font-size: .7rem; font-weight: 700; white-space: nowrap;
+}
+.fu-1  { background: rgba(255,183,3,.12); color: #b37d00; }
+.fu-2  { background: rgba(239,140,0,.15); color: #c06000; }
+.fu-3  { background: rgba(239,35,60,.12); color: var(--danger); }
+.fu-ok { background: rgba(6,194,112,.12); color: var(--success); }
+.fu-no { background: var(--border); color: var(--text-3); }
+
+/* ── Action buttons ───────────────────────────────────────────────── */
+.rw-actions { display: flex; gap: 5px; flex-wrap: nowrap; }
+.rw-btn {
+  border: 1px solid var(--border); background: var(--input-bg); color: var(--text-2);
+  border-radius: 7px; padding: 4px 9px; font-size: .72rem; font-weight: 600;
+  cursor: pointer; transition: all .15s; white-space: nowrap;
+}
+.rw-btn:hover         { border-color: var(--primary); color: var(--primary); }
+.rw-btn:disabled      { opacity: .4; cursor: default; pointer-events: none; }
+.rw-btn.done-bales    { background: #06C270; color: #fff; border-color: #06C270; }
+.rw-btn.done-lapor    { background: var(--primary); color: #fff; border-color: var(--primary); }
+.rw-btn.done-invst    { background: #7B2FBE; color: #fff; border-color: #7B2FBE; }
+.rw-btn.loading       { opacity: .6; pointer-events: none; }
+
+/* ── Empty & loading ──────────────────────────────────────────────── */
+.rw-empty   { text-align: center; padding: 48px 20px; color: var(--text-3); font-size: .85rem; }
+.rw-empty .icon { font-size: 2.4rem; margin-bottom: 10px; }
+.rw-loading { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 40px; color: var(--text-3); }
+
+.rw-pagination { display: flex; align-items: center; gap: 10px; justify-content: center; padding: 14px 0 4px; }
+
+/* ── Resi detail modal ────────────────────────────────────────────── */
+.rw-resi-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 1000;
+  display: none; align-items: center; justify-content: center; padding: 16px;
+}
+.rw-resi-overlay.open { display: flex; }
+.rw-resi-modal {
+  background: var(--card); border-radius: 16px; width: 100%; max-width: 460px;
+  max-height: 85vh; display: flex; flex-direction: column;
+  box-shadow: 0 8px 40px rgba(0,0,0,.18);
+}
+.rw-resi-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding: 16px 18px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.rw-resi-title {
+  font-family: monospace; font-size: .9rem; font-weight: 700; color: var(--text-1);
+  word-break: break-all;
+}
+.rw-resi-subtitle { font-size: .65rem; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 3px; }
+.rw-resi-close {
+  background: none; border: none; font-size: 1.3rem; line-height: 1; cursor: pointer;
+  color: var(--text-3); padding: 0 0 0 8px; flex-shrink: 0;
+}
+.rw-resi-close:hover { color: var(--text-1); }
+.rw-resi-info {
+  display: grid; grid-template-columns: 1fr 1fr; padding: 10px 18px;
+  border-bottom: 1px solid var(--border); gap: 0; flex-shrink: 0;
+}
+.rw-resi-info-item {
+  padding: 6px 0; border-right: 1px solid var(--border);
+}
+.rw-resi-info-item:nth-child(even) { border-right: none; padding-left: 14px; }
+.rw-resi-info-label { font-size: .62rem; font-weight: 600; color: var(--text-3); text-transform: uppercase; margin-bottom: 2px; }
+.rw-resi-info-val   { font-size: .8rem; font-weight: 600; color: var(--text-1); }
+.rw-resi-body { overflow-y: auto; padding: 14px 18px 18px; flex: 1; }
+.rw-resi-loading { text-align: center; padding: 32px 16px; color: var(--text-3); font-size: .83rem; }
+.rw-timeline {}
+.rw-tl-item {
+  display: grid; grid-template-columns: 100px 1fr; gap: 12px;
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.rw-tl-item:last-child { border-bottom: none; }
+.rw-tl-item.first .rw-tl-desc { color: var(--primary); font-weight: 700; }
+.rw-tl-time { font-size: .62rem; color: var(--text-3); line-height: 1.4; padding-top: 2px; }
+.rw-tl-desc { font-size: .75rem; line-height: 1.45; }
+.rw-tl-loc  { font-size: .65rem; color: var(--text-3); margin-top: 2px; }
+.rw-resi-cek-btn {
+  display: block; width: 100%; margin-top: 14px;
+  background: var(--primary); color: #fff; border: none; border-radius: 10px;
+  padding: 10px; font-size: .82rem; font-weight: 700; cursor: pointer;
+  transition: opacity .15s;
+}
+.rw-resi-cek-btn:hover { opacity: .88; }
+.rw-resi-cek-btn:disabled { opacity: .5; cursor: default; }
+
+/* ── Mobile ───────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .rw-summary { grid-template-columns: repeat(3, 1fr); }
+  .rw-topbar  { gap: 8px; padding: 8px 12px; }
+  .rw-search  { min-width: 0; width: 100%; flex-basis: 100%; }
+  .rw-table-card { border-radius: 10px; }
+  .rw-table td, .rw-table th { padding: 8px 10px; }
+  /* wrap rw-table in scroll div via table-wrap class */
+  .rw-table-card .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}
+@media (max-width: 480px) {
+  .rw-summary { grid-template-columns: repeat(2, 1fr); }
+  .rw-card-num { font-size: 1.3rem; }
+  .rw-topbar { flex-direction: column; align-items: stretch; }
+  .rw-select, .rw-refresh { width: 100%; }
+  /* Hide less critical columns on very small screens */
+  .rw-col-hide { display: none; }
+}
+</style>
+</head>
+<body>
+<div id="sidebar-slot"></div>
+<div id="header-slot"></div>
+<div class="main-content">
+  <div class="page" id="pageContent"></div>
+</div>
+
+<!-- Modal riwayat pengiriman resi -->
+<div id="rwResiOverlay" class="rw-resi-overlay" onclick="if(event.target===this)rwCloseResiModal()">
+  <div class="rw-resi-modal">
+    <div class="rw-resi-header">
+      <div>
+        <div class="rw-resi-subtitle">Riwayat Pengiriman</div>
+        <div class="rw-resi-title" id="rwResiTitle"></div>
+      </div>
+      <button class="rw-resi-close" onclick="rwCloseResiModal()">×</button>
+    </div>
+    <div class="rw-resi-info" id="rwResiInfo"></div>
+    <div class="rw-resi-body" id="rwResiBody"></div>
+  </div>
+</div>
+
+<script src="js/db.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/app.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="js/upload-configs.js"></script>
+<script src="js/upload-common.js"></script><script>
+// ── State ──────────────────────────────────────────────────────────────────────
+let _rwData   = [];
+let _rwTab    = 'aktif';
+let _rwSearch = '';
+let _rwCS     = new Set(); // multi-select
+let _rwEksp   = '';
+const _now = new Date();
+let _rwBulan  = `${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,'0')}`;
+let _rwPage   = 1;
+const RW_PAGE_SIZE = 20;
+
+// ── Tab definitions ────────────────────────────────────────────────────────────
+const RW_TABS = [
+  { key: 'aktif',           label: 'Aktif',              emoji: '🔴' },
+  { key: 'tidak_bales',     label: 'CS Tidak Bales',     emoji: '🚨' },
+  { key: 'bales',           label: 'CS Sudah Bales',     emoji: '✅' },
+  { key: 'lapor',           label: 'Lapor Ekspedisi',    emoji: '📤' },
+  { key: 'investigasi',     label: 'Investigasi',        emoji: '🔍' },
+  { key: 'terkirim_otomatis', label: 'Terkirim Otomatis', emoji: '🚀' },
+  { key: 'semua',           label: 'Semua',              emoji: '📋' },
+];
+
+// ── Case Undel mapping (Mengantar status_category → label friendly) ───────────
+const CASE_UNDEL_MAP = {
+  'UNDELIVERED':           { label: 'Tidak Ada Orang',    icon: '🚪' },
+  'NOBODY AT HOME':        { label: 'Tidak Ada Orang',    icon: '🚪' },
+  'PICKUP FAILED':         { label: 'Gagal Pickup',       icon: '📦' },
+  'ADDRESS NOT FOUND':     { label: 'Alamat Tidak Ditemukan', icon: '📍' },
+  'WRONG ADDRESS':         { label: 'Alamat Salah',       icon: '📍' },
+  'REFUSED BY RECIPIENT':  { label: 'Ditolak Penerima',   icon: '🚫' },
+  'RECIPIENT NOT FOUND':   { label: 'Penerima Tidak Ada', icon: '👤' },
+  'UNREACHABLE':           { label: 'Tidak Bisa Dihubungi', icon: '📵' },
+  'PHONE NOT REACHABLE':   { label: 'Tidak Bisa Dihubungi', icon: '📵' },
+  'HELD AT WAREHOUSE':     { label: 'Simpan di Gudang',   icon: '🏭' },
+  'TOLAK_COD':             { label: 'Tolak Bayar COD',    icon: '💳' },
+};
+function fmtCaseUndel(raw) {
+  if (!raw) return '—';
+  const key = raw.toUpperCase().trim();
+  const mapped = CASE_UNDEL_MAP[key];
+  if (mapped) return `${mapped.icon} ${mapped.label}`;
+  // Fallback: title case dari raw
+  return raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
+}
+
+// ── Format helpers ─────────────────────────────────────────────────────────────
+function fmtTs(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+function fmtDurShort(iso) {
+  if (!iso) return '';
+  const ms = Date.now() - new Date(iso).getTime();
+  const h  = Math.floor(ms / 3600000);
+  if (h < 24) return `${h}j`;
+  return `${Math.floor(h/24)}h`;
+}
+
+// ── Render shell ───────────────────────────────────────────────────────────────
+function rwRenderPage() {
+  document.getElementById('pageContent').innerHTML = `
+    <div id="rwSummary">
+      <div class="rw-summary">
+        ${Array(7).fill(`<div class="rw-card"><div class="rw-skel" style="width:60%"></div><div class="rw-skel big"></div><div class="rw-skel" style="width:75%"></div></div>`).join('')}
+      </div>
+    </div>
+    <div class="rw-topbar">
+      <input type="text" class="rw-search" id="rwSearch" placeholder="🔍 Cari resi / nama / CS..."
+        oninput="rwSetSearch(this.value)">
+      <div style="position:relative" id="rwCSWrap">
+        <button class="rw-select" id="rwCSBtn" onclick="rwToggleCSDropdown(event)"
+          style="cursor:pointer;text-align:left;display:flex;align-items:center;gap:6px;min-width:140px">
+          <span id="rwCSLabel">Semua CS</span><span style="margin-left:auto;font-size:.65rem">▾</span>
+        </button>
+        <div id="rwCSDropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:200;
+          background:var(--card);border:1px solid var(--border);border-radius:10px;
+          box-shadow:0 4px 20px rgba(0,0,0,.12);min-width:200px;max-height:260px;overflow-y:auto;padding:6px 0">
+        </div>
+      </div>
+      <select class="rw-select" id="rwEkspSel" onchange="rwSetEksp(this.value)"><option value="">Semua Ekspedisi</option></select>
+      <select class="rw-select" id="rwBulanSel" onchange="rwSetBulan(this.value)"><option value="">Semua Bulan</option></select>
+      <button class="rw-refresh" onclick="rwLoad()">🔄 Refresh</button>
+    </div>
+    <div class="rw-tabs" id="rwTabs"></div>
+    <div id="rwTable"></div>
+  `;
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────────
+function rwRender() {
+  // Update filter dropdowns
+  const csSet   = [...new Set(_rwData.map(o => o.cs_nama).filter(Boolean))].sort();
+  const ekspSet = [...new Set(_rwData.map(o => o.ekspedisi).filter(Boolean))].sort();
+
+  const csDropdown = document.getElementById('rwCSDropdown');
+  if (csDropdown) {
+    csDropdown.innerHTML = `
+      <div style="padding:6px 12px 4px;display:flex;gap:8px">
+        <span onclick="rwCSSelectAll()" style="font-size:.72rem;color:var(--primary);cursor:pointer;font-weight:600">Pilih Semua</span>
+        <span style="color:var(--border)">|</span>
+        <span onclick="rwCSClearAll()" style="font-size:.72rem;color:var(--text-3);cursor:pointer">Reset</span>
+      </div>
+      <div style="height:1px;background:var(--border);margin:4px 0"></div>
+      ${csSet.map(c => `
+        <label style="display:flex;align-items:center;gap:8px;padding:6px 14px;cursor:pointer;font-size:.8rem;
+          transition:background .1s" onmouseover="this.style.background='rgba(67,97,238,.06)'" onmouseout="this.style.background=''">
+          <input type="checkbox" value="${escapeHtml(c)}" ${_rwCS.has(c)?'checked':''}
+            onchange="rwToggleCS(this.value,this.checked)"
+            style="accent-color:var(--primary);width:14px;height:14px;cursor:pointer">
+          <span>${escapeHtml(c)}</span>
+        </label>`).join('')}
+    `;
+  }
+  rwUpdateCSLabel();
+
+  const selEksp = document.getElementById('rwEkspSel');
+  if (selEksp) selEksp.innerHTML = `<option value="">Semua Ekspedisi</option>` +
+    ekspSet.map(e => `<option value="${escapeHtml(e)}" ${_rwEksp===e?'selected':''}>${escapeHtml(e)}</option>`).join('');
+
+  const bulanSet = [...new Set(_rwData.map(o => {
+    const src = o.order_date || o.created_at;
+    if (!src) return null;
+    return String(src).slice(0, 7);
+  }).filter(Boolean))].sort().reverse();
+  const bulanLabels = { '01':'Jan','02':'Feb','03':'Mar','04':'Apr','05':'Mei','06':'Jun','07':'Jul','08':'Agu','09':'Sep','10':'Okt','11':'Nov','12':'Des' };
+  const selBulan = document.getElementById('rwBulanSel');
+  if (selBulan) selBulan.innerHTML = `<option value="">Semua Bulan</option>` +
+    bulanSet.map(b => {
+      const [y, m] = b.split('-');
+      const label = `${bulanLabels[m] || m} ${y}`;
+      return `<option value="${b}" ${_rwBulan===b?'selected':''}>${label}</option>`;
+    }).join('');
+
+  // Apply filter bulan/CS/ekspedisi ke base data untuk counts
+  const _base = _rwData.filter(o => {
+    if (_rwBulan) {
+      const src = o.order_date || o.created_at;
+      if (!src || String(src).slice(0, 7) !== _rwBulan) return false;
+    }
+    if (_rwCS.size && !_rwCS.has(o.cs_nama)) return false;
+    if (_rwEksp && o.ekspedisi !== _rwEksp) return false;
+    return true;
+  });
+
+  // Hitung per tab untuk summary & badge
+  const counts = {
+    aktif:              _base.filter(o => !o.cs_responded && !o.lapor_ekspedisi && !o.investigasi && !o.auto_resolved).length,
+    tidak_bales:        _base.filter(o => o.fu_count >= 4 && !o.cs_responded && !o.lapor_ekspedisi && !o.investigasi && !o.auto_resolved).length,
+    bales:              _base.filter(o => o.cs_responded).length,
+    lapor:              _base.filter(o => o.lapor_ekspedisi).length,
+    investigasi:        _base.filter(o => o.investigasi).length,
+    terkirim_otomatis:  _base.filter(o => o.auto_resolved).length,
+    semua:              _base.length,
+  };
+
+  // Subset aktif: fu breakdown
+  const aktifRows = _base.filter(o => !o.cs_responded && !o.lapor_ekspedisi && !o.investigasi && !o.auto_resolved);
+  const fuInfoCount = aktifRows.filter(o => o.fu_count === 1).length;
+  const fu1Count    = aktifRows.filter(o => o.fu_count === 2).length;
+
+  // Summary cards
+  const summary = document.getElementById('rwSummary');
+  if (summary) summary.innerHTML = `<div class="rw-summary">
+    <div class="rw-card ${_rwTab==='aktif'?'active':''}" onclick="rwSetTab('aktif')">
+      <div class="rw-card-label">🔴 Aktif</div>
+      <div class="rw-card-num c-danger">${counts.aktif}</div>
+      <div class="rw-card-sub">Perlu tindak lanjut</div>
+    </div>
+    <div class="rw-card" style="cursor:default">
+      <div class="rw-card-label">📨 FU Info Terkirim</div>
+      <div class="rw-card-num" style="color:var(--warning)">${fuInfoCount}</div>
+      <div class="rw-card-sub">Menunggu FU 1 besok</div>
+    </div>
+    <div class="rw-card" style="cursor:default">
+      <div class="rw-card-label">🔔 FU 1 Terkirim</div>
+      <div class="rw-card-num" style="color:#c06000">${fu1Count}</div>
+      <div class="rw-card-sub">Menunggu FU 2 besok</div>
+    </div>
+    <div class="rw-card ${_rwTab==='tidak_bales'?'active':''}" onclick="rwSetTab('tidak_bales')">
+      <div class="rw-card-label">🚨 CS Tidak Bales</div>
+      <div class="rw-card-num c-danger">${counts.tidak_bales}</div>
+      <div class="rw-card-sub">Max FU, perlu eskalasi</div>
+    </div>
+    <div class="rw-card ${_rwTab==='bales'?'active':''}" onclick="rwSetTab('bales')">
+      <div class="rw-card-label">✅ CS Bales</div>
+      <div class="rw-card-num c-success">${counts.bales}</div>
+      <div class="rw-card-sub">Sudah konfirmasi</div>
+    </div>
+    <div class="rw-card ${_rwTab==='lapor'?'active':''}" onclick="rwSetTab('lapor')">
+      <div class="rw-card-label">📤 Lapor Ekspedisi</div>
+      <div class="rw-card-num c-primary">${counts.lapor}</div>
+      <div class="rw-card-sub">Sudah dilaporkan</div>
+    </div>
+    <div class="rw-card ${_rwTab==='terkirim_otomatis'?'active':''}" onclick="rwSetTab('terkirim_otomatis')">
+      <div class="rw-card-label">🚀 Terkirim Otomatis</div>
+      <div class="rw-card-num c-success">${counts.terkirim_otomatis}</div>
+      <div class="rw-card-sub">Berhasil dikirim setelah bermasalah</div>
+    </div>
+  </div>`;
+
+  // Tabs
+  const tabsEl = document.getElementById('rwTabs');
+  if (tabsEl) tabsEl.innerHTML = RW_TABS.map(t => `
+    <div class="rw-tab ${_rwTab===t.key?'active':''}" onclick="rwSetTab('${t.key}')">
+      ${t.emoji} ${t.label} <span class="rw-badge">${counts[t.key] ?? _rwData.length}</span>
+    </div>`).join('');
+
+  // Filter & render table
+  rwRenderTable();
+}
+
+function rwGetTabRows() {
+  let rows = _rwData;
+  if (_rwTab === 'aktif')                    rows = rows.filter(o => !o.cs_responded && !o.lapor_ekspedisi && !o.investigasi && !o.auto_resolved);
+  else if (_rwTab === 'tidak_bales')         rows = rows.filter(o => o.fu_count >= 3 && !o.cs_responded && !o.lapor_ekspedisi && !o.investigasi && !o.auto_resolved);
+  else if (_rwTab === 'bales')               rows = rows.filter(o => o.cs_responded);
+  else if (_rwTab === 'lapor')               rows = rows.filter(o => o.lapor_ekspedisi);
+  else if (_rwTab === 'investigasi')         rows = rows.filter(o => o.investigasi);
+  else if (_rwTab === 'terkirim_otomatis')   rows = rows.filter(o => o.auto_resolved);
+
+  // Search
+  if (_rwSearch) {
+    const q = _rwSearch.toLowerCase();
+    rows = rows.filter(o =>
+      (o.resi         || '').toLowerCase().includes(q) ||
+      (o.nama_pembeli || '').toLowerCase().includes(q) ||
+      (o.cs_nama      || '').toLowerCase().includes(q)
+    );
+  }
+  if (_rwCS.size) rows = rows.filter(o => _rwCS.has(o.cs_nama));
+  if (_rwEksp) rows = rows.filter(o => o.ekspedisi === _rwEksp);
+  if (_rwBulan) rows = rows.filter(o => {
+    const src = o.order_date || o.created_at;
+    if (!src) return false;
+    return String(src).slice(0, 7) === _rwBulan;
+  });
+
+  return rows;
+}
+
+function rwRenderTable() {
+  const el = document.getElementById('rwTable');
+  if (!el) return;
+
+  const rows = rwGetTabRows();
+
+  if (!rows.length) {
+    const t = RW_TABS.find(t => t.key === _rwTab);
+    el.innerHTML = `<div class="rw-table-card"><div class="rw-empty"><div class="icon">${_rwTab==='aktif'?'🎉':'📭'}</div>${_rwTab==='aktif'?'Tidak ada paket aktif — semua beres!':'Tidak ada data'}</div></div>`;
+    return;
+  }
+
+  const totalPages = Math.max(1, Math.ceil(rows.length / RW_PAGE_SIZE));
+  if (_rwPage > totalPages) _rwPage = 1;
+  const offset   = (_rwPage - 1) * RW_PAGE_SIZE;
+  const pageRows = rows.slice(offset, offset + RW_PAGE_SIZE);
+
+  const tableRows = pageRows.map((o, i) => {
+    // FU status badge
+    const fuBadge = o.fu_count >= 3
+      ? `<span class="fu-badge fu-3">FU 3 / Max</span>`
+      : o.fu_count === 2
+      ? `<span class="fu-badge fu-2">FU 2 Terkirim</span>`
+      : `<span class="fu-badge fu-1">FU 1 Terkirim</span>`;
+
+    const fuStatusCol = _rwTab === 'aktif' ? fuBadge : '';
+
+    // Aksi buttons — Investigasi hanya muncul di tab Lapor Ekspedisi
+    const btnBales = o.cs_responded
+      ? `<button class="rw-btn done-bales" disabled>✅ CS Bales</button>`
+      : `<button class="rw-btn" id="btn-bales-${o.id}" onclick="rwAksi(${o.id},'cs_responded')">✅ CS Bales</button>`;
+    const btnLapor = o.lapor_ekspedisi
+      ? `<button class="rw-btn done-lapor" disabled>📤 Sudah Lapor</button>`
+      : `<button class="rw-btn" id="btn-lapor-${o.id}" onclick="rwAksi(${o.id},'lapor_ekspedisi')">📤 Lapor Eksp.</button>`;
+    const btnInvst = '';
+
+    return `<tr>
+      <td class="rw-col-hide" style="font-size:.7rem;color:var(--text-3);width:24px">${offset + i + 1}</td>
+      <td style="font-weight:600;font-size:.78rem;white-space:nowrap">
+        ${o.resi
+          ? `<span onclick="rwShowResiDetail('${escapeHtml(o.resi)}');event.stopPropagation()" style="color:var(--primary);cursor:pointer;text-decoration:underline;text-underline-offset:2px">${escapeHtml(o.resi)}</span>`
+          : '—'}
+      </td>
+      <td style="font-size:.78rem">${escapeHtml(o.nama_pembeli || '—')}</td>
+      <td style="font-size:.78rem">
+        ${o.hp_pembeli
+          ? `<a href="https://wa.me/${o.hp_pembeli.replace(/\D/g,'').replace(/^0/,'62')}" target="_blank" rel="noopener" style="color:var(--primary);text-decoration:none;font-weight:600">${escapeHtml(o.hp_pembeli)}</a>`
+          : '<span style="color:var(--text-3)">—</span>'}
+      </td>
+      <td style="font-size:.78rem">${escapeHtml(o.cs_nama || '—')}</td>
+      <td class="rw-col-hide" style="font-size:.75rem;color:var(--text-3)">${escapeHtml(o.produk || '—')}</td>
+      <td style="font-size:.78rem">${escapeHtml(o.ekspedisi || '—')}</td>
+      <td class="rw-col-hide" style="font-size:.78rem">${escapeHtml(o.kota_tujuan || '—')}</td>
+      <td style="font-size:.78rem;color:var(--danger);font-weight:600;white-space:nowrap">${fmtCaseUndel(o.case_undel)}</td>
+      <td class="rw-col-hide" style="font-size:.72rem;color:var(--text-3)">
+        ${fmtTs(o.created_at)}
+        <div style="font-size:.65rem;color:var(--text-3)">${fmtDurShort(o.created_at)} lalu</div>
+      </td>
+      <td style="font-size:.72rem">
+        ${o.fu_1_at ? `<div style="color:var(--warning)">FU1 ${fmtTs(o.fu_1_at)}</div>` : '<div style="color:var(--text-3)">FU1 —</div>'}
+        ${o.fu_2_at ? `<div style="color:#c06000">FU2 ${fmtTs(o.fu_2_at)}</div>`        : '<div style="color:var(--text-3)">FU2 —</div>'}
+        ${o.fu_3_at ? `<div style="color:var(--danger)">FU3 ${fmtTs(o.fu_3_at)}</div>`  : '<div style="color:var(--text-3)">FU3 —</div>'}
+      </td>
+      <td>${fuStatusCol}</td>
+      <td><div class="rw-actions">${btnBales}${btnLapor}${btnInvst}</div></td>
+    </tr>`;
+  }).join('');
+
+  const pagination = totalPages > 1 ? `
+    <div class="rw-pagination">
+      <button class="btn btn-outline btn-sm" onclick="rwGoPage(${_rwPage-1})" ${_rwPage<=1?'disabled':''}>← Prev</button>
+      <span style="font-size:.82rem;color:var(--text-2)">Halaman <strong>${_rwPage}</strong> dari <strong>${totalPages}</strong> (${rows.length} paket)</span>
+      <button class="btn btn-outline btn-sm" onclick="rwGoPage(${_rwPage+1})" ${_rwPage>=totalPages?'disabled':''}>Next →</button>
+    </div>` : `<div style="font-size:.75rem;color:var(--text-3);padding:10px 16px">${rows.length} paket</div>`;
+
+  el.innerHTML = `
+    <div class="rw-table-card">
+      <div class="rw-table-header">
+        <div class="rw-table-title">${RW_TABS.find(t=>t.key===_rwTab)?.emoji} ${RW_TABS.find(t=>t.key===_rwTab)?.label}</div>
+      </div>
+      <div class="table-wrap">
+        <table class="rw-table" style="width:100%">
+          <thead><tr>
+            <th class="rw-col-hide">#</th><th>Resi</th><th>Nama Pembeli</th><th>No Customer</th><th>CS</th>
+            <th class="rw-col-hide">Produk</th><th>Ekspedisi</th><th class="rw-col-hide">Kota</th>
+            <th>Case Undel</th><th class="rw-col-hide">Masuk RW</th><th>Follow Up</th>
+            <th>Status FU</th><th>Aksi</th>
+          </tr></thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+      </div>
+      ${pagination}
+    </div>`;
+}
+
+// ── Aksi (centang) ─────────────────────────────────────────────────────────────
+async function rwAksi(id, field) {
+  const btnId = field === 'cs_responded'  ? `btn-bales-${id}`
+              : field === 'lapor_ekspedisi' ? `btn-lapor-${id}`
+              : `btn-invst-${id}`;
+  const btn = document.getElementById(btnId);
+  if (btn) { btn.classList.add('loading'); btn.textContent = '⏳...'; }
+
+  try {
+    const r = await fetch('/api/room-work', {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ id, [field]: true }),
+    });
+    if (!r.ok) throw new Error((await r.json()).error || 'Gagal update');
+
+    // Update local data
+    const row = _rwData.find(o => o.id === id);
+    if (row) {
+      row[field] = true;
+      row[field + '_at'] = new Date().toISOString();
+    }
+
+    const label = field === 'cs_responded' ? 'CS Bales' : field === 'lapor_ekspedisi' ? 'Lapor Ekspedisi' : 'Investigasi';
+    showToast(`${label} dicatat`, 'success');
+    rwRender();
+  } catch (e) {
+    if (btn) { btn.classList.remove('loading'); btn.textContent = '⚠️ Gagal'; }
+    showToast('Gagal: ' + e.message, 'error');
+  }
+}
+
+// ── Event handlers ─────────────────────────────────────────────────────────────
+function rwSetTab(key)    { _rwTab = key; _rwPage = 1; rwRender(); }
+function rwSetSearch(val) { _rwSearch = val; _rwPage = 1; rwRenderTable(); }
+function rwSetEksp(val)   { _rwEksp = val; _rwPage = 1; rwRender(); }
+
+// ── CS multi-select ────────────────────────────────────────────────────────────
+function rwToggleCSDropdown(e) {
+  e.stopPropagation();
+  const dd = document.getElementById('rwCSDropdown');
+  dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+}
+function rwToggleCS(val, checked) {
+  checked ? _rwCS.add(val) : _rwCS.delete(val);
+  rwUpdateCSLabel();
+  _rwPage = 1;
+  rwRender();
+}
+function rwCSSelectAll() {
+  document.querySelectorAll('#rwCSDropdown input[type=checkbox]').forEach(cb => {
+    cb.checked = true; _rwCS.add(cb.value);
+  });
+  rwUpdateCSLabel(); _rwPage = 1; rwRenderTable();
+}
+function rwCSClearAll() {
+  _rwCS.clear();
+  document.querySelectorAll('#rwCSDropdown input[type=checkbox]').forEach(cb => cb.checked = false);
+  rwUpdateCSLabel(); _rwPage = 1; rwRenderTable();
+}
+function rwUpdateCSLabel() {
+  const el = document.getElementById('rwCSLabel');
+  if (!el) return;
+  el.textContent = _rwCS.size === 0 ? 'Semua CS' : `${_rwCS.size} CS dipilih`;
+  el.style.color = _rwCS.size > 0 ? 'var(--primary)' : '';
+}
+// Tutup dropdown kalau klik di luar
+document.addEventListener('click', e => {
+  if (!document.getElementById('rwCSWrap')?.contains(e.target)) {
+    const dd = document.getElementById('rwCSDropdown');
+    if (dd) dd.style.display = 'none';
+  }
+});
+function rwSetBulan(val)  { _rwBulan = val; _rwPage = 1; rwRender(); }
+function rwGoPage(p)      { _rwPage = p; rwRenderTable(); document.getElementById('rwTable')?.scrollIntoView({ behavior:'smooth', block:'start' }); }
+
+// ── Load ───────────────────────────────────────────────────────────────────────
+async function rwLoad() {
+  const el = document.getElementById('rwTable');
+  if (el) el.innerHTML = `<div class="rw-loading"><div class="spinner"></div>Memuat data Room Work...</div>`;
+  try {
+    const r = await fetch('/api/room-work?tab=semua&limit=1000');
+    if (!r.ok) throw new Error((await r.json()).error || `HTTP ${r.status}`);
+    const data = await r.json();
+    _rwData = data;
+    _rwPreviewMode = false;
+    rwRender();
+  } catch (e) {
+    _rwData = [];
+    _rwPreviewMode = false;
+    rwRender();
+  }
+}
+
+// ── Resi detail modal ──────────────────────────────────────────────────────────
+function rwCloseResiModal() {
+  document.getElementById('rwResiOverlay').classList.remove('open');
+}
+
+async function rwShowResiDetail(resi) {
+  if (!resi) return;
+  const overlay = document.getElementById('rwResiOverlay');
+  const titleEl = document.getElementById('rwResiTitle');
+  const infoEl  = document.getElementById('rwResiInfo');
+  const bodyEl  = document.getElementById('rwResiBody');
+
+  titleEl.textContent = resi;
+  infoEl.innerHTML    = '';
+  bodyEl.innerHTML    = '<div class="rw-resi-loading">Memuat riwayat pengiriman…</div>';
+  overlay.classList.add('open');
+
+  try {
+    const { data, error } = await _sb
+      .from('crm_orders')
+      .select('id,ekspedisi,status_resi,status_resi_detail,status_resi_updated_at,kota_tujuan')
+      .eq('id', resi)
+      .single();
+
+    if (error || !data) {
+      bodyEl.innerHTML = `<div class="rw-resi-loading">Data tidak ditemukan.</div>`;
+      return;
+    }
+
+    const STATUS_LABEL = {
+      SAMPAI:'✅ Sampai', BERMASALAH:'⚠️ Bermasalah', RETUR:'↩️ Retur',
+      DIKIRIM:'📦 Dikirim', OTW:'🚚 OTW', KOTA_TUJUAN:'🏙️ Kota Tujuan',
+      BELUM_DICEK:'🔘 Belum Dicek', MANUAL:'📋 Manual', MANUAL_CEK:'📋 Cek Manual',
+    };
+    const detail    = data.status_resi_detail || {};
+    const records   = Array.isArray(detail.records) ? detail.records : [];
+    const updatedAt = data.status_resi_updated_at
+      ? new Date(data.status_resi_updated_at).toLocaleString('id-ID', {
+          timeZone: 'Asia/Jakarta', day:'2-digit', month:'short',
+          hour:'2-digit', minute:'2-digit',
+        })
+      : '—';
+
+    infoEl.innerHTML = `
+      <div class="rw-resi-info-item">
+        <div class="rw-resi-info-label">Ekspedisi</div>
+        <div class="rw-resi-info-val">${escapeHtml(data.ekspedisi || '—')}</div>
+      </div>
+      <div class="rw-resi-info-item">
+        <div class="rw-resi-info-label">Status</div>
+        <div class="rw-resi-info-val">${STATUS_LABEL[data.status_resi] || data.status_resi || '—'}</div>
+      </div>
+      <div class="rw-resi-info-item">
+        <div class="rw-resi-info-label">Kota Tujuan</div>
+        <div class="rw-resi-info-val">${escapeHtml(data.kota_tujuan || '—')}</div>
+      </div>
+      <div class="rw-resi-info-item">
+        <div class="rw-resi-info-label">Update Terakhir</div>
+        <div class="rw-resi-info-val">${updatedAt}</div>
+      </div>
+      ${detail.masalah_kategori ? `
+      <div class="rw-resi-info-item" style="grid-column:1/-1;border-right:none">
+        <div class="rw-resi-info-label">Kategori Masalah</div>
+        <div class="rw-resi-info-val" style="color:var(--danger)">${escapeHtml(detail.masalah_kategori)}</div>
+      </div>` : ''}
+    `;
+
+    if (!records.length) {
+      bodyEl.innerHTML = `<div class="rw-resi-loading">Belum ada riwayat tersimpan.<br>
+        <button class="rw-resi-cek-btn" style="max-width:200px;margin:12px auto 0" onclick="rwCekResiFromModal('${escapeHtml(resi)}')">🔄 Cek Sekarang</button>
+      </div>`;
+      return;
+    }
+
+    bodyEl.innerHTML = `<div class="rw-timeline">
+      ${records.map((r, i) => {
+        let waktu = '';
+        if (r.actual_time) {
+          waktu = new Date(r.actual_time * 1000).toLocaleString('id-ID', {
+            timeZone: 'Asia/Jakarta', day:'2-digit', month:'short',
+            hour:'2-digit', minute:'2-digit',
+          });
+        }
+        const desc = r.description || r.tracking_name || '';
+        const loc  = r.current_location?.location_name || '';
+        return `<div class="rw-tl-item${i === 0 ? ' first' : ''}">
+          <div class="rw-tl-time">${escapeHtml(waktu)}</div>
+          <div>
+            <div class="rw-tl-desc">${escapeHtml(desc)}</div>
+            ${loc ? `<div class="rw-tl-loc">📍 ${escapeHtml(loc)}</div>` : ''}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+    <button class="rw-resi-cek-btn" id="rwCekBtn" onclick="rwCekResiFromModal('${escapeHtml(resi)}')">🔄 Cek Ulang</button>`;
+
+  } catch (e) {
+    bodyEl.innerHTML = `<div class="rw-resi-loading">Error: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+async function rwCekResiFromModal(resi) {
+  const btn = document.getElementById('rwCekBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Mengecek...'; }
+  try {
+    const r = await fetch(`/api/tracking-check?table=crm_orders&id=${encodeURIComponent(resi)}`);
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Gagal cek');
+    // Reload modal dengan data terbaru
+    await rwShowResiDetail(resi);
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = '🔄 Cek Ulang'; }
+    alert('Gagal cek resi: ' + e.message);
+  }
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────────
+(async () => {
+  await initSupabaseClient();
+  const user = await requireAuth();
+  if (!user) return;
+  renderLayout('room-work', user);
+  rwRenderPage();
+  await rwLoad();
+})();
+</script>
+</body>
+</html>
