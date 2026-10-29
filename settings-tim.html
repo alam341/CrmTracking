@@ -179,7 +179,7 @@ function renderTeamPage() {
       <div class="card-header">
         <div class="card-header-left">
           <h3>📱 WA Notifikasi Internal</h3>
-          <div class="card-sub">Nomor WA yang dipakai kirim notif ke CS kalau ada order bermasalah</div>
+          <div class="card-sub">Nomor WA khusus CRM untuk kirim notif ke CS kalau ada paket bermasalah</div>
         </div>
         <button class="btn btn-outline btn-sm" onclick="loadNotifStatus()">🔄 Cek Status</button>
       </div>
@@ -209,6 +209,14 @@ async function loadNotifStatus() {
   try {
     const r = await fetch('/api/notif-proxy?action=qr');
     const data = await r.json();
+
+    if (data.unconfigured) {
+      wrap.innerHTML = `<div style="display:flex;align-items:center;gap:10px">
+        <span style="width:10px;height:10px;border-radius:50%;background:#aaa;display:inline-block;flex-shrink:0"></span>
+        <span style="font-size:.85rem;color:var(--text-3)">Belum dikonfigurasi — WA notif CRM akan disetup terpisah</span>
+      </div>`;
+      return;
+    }
 
     if (data.error) {
       wrap.innerHTML = `<div style="display:flex;align-items:center;gap:10px">
