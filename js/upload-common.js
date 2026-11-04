@@ -291,6 +291,13 @@ async function applyUploadData() {
     let msg = `✅ ${parts.join(', ')}!`;
     if (result.duplicateInBatch > 0) msg += ` (${result.duplicateInBatch} duplikat dalam file dilewati)`;
     showToast(msg, 'success');
+
+    // CRM: auto-backfill room_work yang nama/produk masih kosong
+    // (terjadi kalau webhook Mengantar fire sebelum order ini diupload Excel)
+    if (domain === 'crm') {
+      fetch('/api/backfill-roomwork').catch(() => {});
+    }
+
     if (typeof trReload === 'function') trReload();
   } catch (e) {
     showToast('❌ Gagal simpan: ' + (e.message || e), 'error');
