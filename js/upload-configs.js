@@ -208,6 +208,7 @@ function _makeSimpleOrderConfig(domainLabel) {
       pembayaran: h => _findCol(h, ['pembayaran', 'metode pembayaran']),
       ekspedisi: h => _findCol(h, ['ekspedisi', 'kurir', 'expedisi', 'ekpedisi']),
       instruksi: h => _findCol(h, ['instruksi pengiriman', 'instruksi']),
+      cs:        h => _findCol(h, ['cs', 'nama cs', 'cs nama', 'nama_cs']),
     },
   };
 }
@@ -252,7 +253,8 @@ function _parseSimpleOrderRows(rows, mapping, domain, skuMap) {
       qty: qtyFinal,
       total: _parsePrice(get(mapping.total)),
       ekspedisi,
-      cs_nama: extractCsName(get(mapping.instruksi)),
+      // Kolom CS langsung (mis. "CS") prioritas, fallback ke ekstrak dari instruksi
+      cs_nama: String(get(mapping.cs) || '').trim() || extractCsName(get(mapping.instruksi)),
     };
   }).filter(r => r.id && r.id.trim());
 }
