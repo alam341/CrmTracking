@@ -153,6 +153,57 @@
   .rp-filter-bar input[type=date] { width: 100%; text-align: center; }
   .rp-card-num { font-size: 1.3rem; }
 }
+
+/* ── Resi detail modal ────────────────────────────────────────────── */
+.rp-resi-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 1000;
+  display: none; align-items: center; justify-content: center; padding: 16px;
+}
+.rp-resi-overlay.open { display: flex; }
+.rp-resi-modal {
+  background: var(--card); border-radius: 16px; width: 100%; max-width: 460px;
+  max-height: 85vh; display: flex; flex-direction: column;
+  box-shadow: 0 8px 40px rgba(0,0,0,.18);
+}
+.rp-resi-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding: 16px 18px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.rp-resi-title    { font-family: monospace; font-size: .9rem; font-weight: 700; word-break: break-all; }
+.rp-resi-subtitle { font-size: .65rem; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 3px; }
+.rp-resi-close    { background: none; border: none; font-size: 1.3rem; line-height: 1; cursor: pointer; color: var(--text-3); padding: 0 0 0 8px; flex-shrink: 0; }
+.rp-resi-close:hover { color: var(--text-1); }
+.rp-resi-info {
+  display: grid; grid-template-columns: 1fr 1fr; padding: 10px 18px;
+  border-bottom: 1px solid var(--border); gap: 0; flex-shrink: 0;
+}
+.rp-resi-info-item { padding: 6px 0; border-right: 1px solid var(--border); }
+.rp-resi-info-item:nth-child(even) { border-right: none; padding-left: 14px; }
+.rp-resi-info-label { font-size: .62rem; font-weight: 600; color: var(--text-3); text-transform: uppercase; margin-bottom: 2px; }
+.rp-resi-info-val   { font-size: .8rem; font-weight: 600; }
+.rp-resi-body   { overflow-y: auto; padding: 14px 18px 18px; flex: 1; }
+.rp-resi-loading{ text-align: center; padding: 32px 16px; color: var(--text-3); font-size: .83rem; }
+.rp-tl-item {
+  display: grid; grid-template-columns: 100px 1fr; gap: 12px;
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+}
+.rp-tl-item:last-child { border-bottom: none; }
+.rp-tl-item.first .rp-tl-desc { color: var(--primary); font-weight: 700; }
+.rp-tl-time { font-size: .62rem; color: var(--text-3); line-height: 1.4; padding-top: 2px; }
+.rp-tl-desc { font-size: .75rem; line-height: 1.45; }
+.rp-tl-loc  { font-size: .65rem; color: var(--text-3); margin-top: 2px; }
+.rp-resi-cek-btn {
+  display: block; width: 100%; margin-top: 14px;
+  background: var(--primary); color: #fff; border: none; border-radius: 10px;
+  padding: 10px; font-size: .82rem; font-weight: 700; cursor: pointer; transition: opacity .15s;
+}
+.rp-resi-cek-btn:hover { opacity: .88; }
+.rp-resi-cek-btn:disabled { opacity: .5; cursor: default; }
+.rp-resi-link {
+  color: var(--primary); cursor: pointer; font-weight: 700;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+.rp-resi-link:hover { opacity: .75; }
 </style>
 </head>
 <body>
@@ -160,6 +211,23 @@
 <div id="header-slot"></div>
 <div class="main-content">
   <div class="page" id="pageContent"></div>
+</div>
+
+<!-- Modal riwayat pengiriman resi -->
+<div id="rpResiOverlay" class="rp-resi-overlay" onclick="if(event.target===this)rpCloseResiModal()">
+  <div class="rp-resi-modal">
+    <div class="rp-resi-header">
+      <div>
+        <div class="rp-resi-subtitle">Riwayat Pengiriman</div>
+        <div class="rp-resi-title" id="rpResiTitle">—</div>
+      </div>
+      <button class="rp-resi-close" onclick="rpCloseResiModal()">×</button>
+    </div>
+    <div class="rp-resi-info" id="rpResiInfo"></div>
+    <div class="rp-resi-body" id="rpResiBody">
+      <div class="rp-resi-loading">Memuat…</div>
+    </div>
+  </div>
 </div>
 
 <script src="js/db.js"></script>
@@ -385,7 +453,7 @@ function rpRenderTable(rows) {
 
     return `<tr>
       <td style="font-size:.7rem;color:var(--text-3);width:28px">${offset + i + 1}</td>
-      <td style="font-weight:600;font-size:.78rem">${escapeHtml(o.id || '—')}</td>
+      <td style="font-weight:600;font-size:.78rem">${o.id ? `<span class="rp-resi-link" data-resi="${escapeHtml(o.id)}" onclick="rpOpenResi(this.dataset.resi)">${escapeHtml(o.id)}</span>` : '—'}</td>
       <td style="font-size:.8rem">${escapeHtml(o.nama || '—')}</td>
       <td style="font-size:.78rem">${escapeHtml(o.cs_nama || '—')}</td>
       <td style="font-size:.78rem">${escapeHtml(o.produk || '—')}</td>
@@ -545,6 +613,128 @@ function rpRefresh() {
   sessionStorage.removeItem(`cs_orders_${_rpDateFrom}_${_rpDateTo}`);
   rpLoad();
 }
+
+// ── Resi detail modal ─────────────────────────────────────────────────────────
+function rpCloseResiModal() {
+  document.getElementById('rpResiOverlay').classList.remove('open');
+}
+
+async function rpOpenResi(resi) {
+  if (!resi) return;
+  const overlay = document.getElementById('rpResiOverlay');
+  const titleEl = document.getElementById('rpResiTitle');
+  const infoEl  = document.getElementById('rpResiInfo');
+  const bodyEl  = document.getElementById('rpResiBody');
+
+  titleEl.textContent = resi;
+  infoEl.innerHTML    = '';
+  bodyEl.innerHTML    = '<div class="rp-resi-loading">⏳ Memuat riwayat pengiriman…</div>';
+  overlay.classList.add('open');
+
+  try {
+    const { data, error } = await _sb
+      .from('crm_orders')
+      .select('id,ekspedisi,status_resi,status_resi_detail,status_resi_updated_at,kota_tujuan')
+      .eq('id', resi)
+      .single();
+
+    if (error || !data) {
+      bodyEl.innerHTML = `<div class="rp-resi-loading">Data tidak ditemukan di database tracking.</div>`;
+      return;
+    }
+
+    const STATUS_LABEL = {
+      SAMPAI:'✅ Sampai', BERMASALAH:'⚠️ Bermasalah', RETUR:'↩️ Retur',
+      DIKIRIM:'📦 Dikirim', OTW:'🚚 OTW', KOTA_TUJUAN:'🏙️ Kota Tujuan',
+      BELUM_DICEK:'🔘 Belum Dicek', MANUAL:'📋 Manual', MANUAL_CEK:'📋 Cek Manual',
+    };
+    const detail    = data.status_resi_detail || {};
+    const records   = Array.isArray(detail.records) ? detail.records : [];
+    const updatedAt = data.status_resi_updated_at
+      ? new Date(data.status_resi_updated_at).toLocaleString('id-ID', {
+          timeZone: 'Asia/Jakarta', day:'2-digit', month:'short',
+          hour:'2-digit', minute:'2-digit',
+        })
+      : '—';
+
+    infoEl.innerHTML = `
+      <div class="rp-resi-info-item">
+        <div class="rp-resi-info-label">Ekspedisi</div>
+        <div class="rp-resi-info-val">${escapeHtml(data.ekspedisi || '—')}</div>
+      </div>
+      <div class="rp-resi-info-item">
+        <div class="rp-resi-info-label">Status</div>
+        <div class="rp-resi-info-val">${STATUS_LABEL[data.status_resi] || data.status_resi || '—'}</div>
+      </div>
+      <div class="rp-resi-info-item">
+        <div class="rp-resi-info-label">Kota Tujuan</div>
+        <div class="rp-resi-info-val">${escapeHtml(data.kota_tujuan || '—')}</div>
+      </div>
+      <div class="rp-resi-info-item">
+        <div class="rp-resi-info-label">Update Terakhir</div>
+        <div class="rp-resi-info-val">${updatedAt}</div>
+      </div>
+      ${detail.masalah_kategori ? `
+      <div class="rp-resi-info-item" style="grid-column:1/-1;border-right:none">
+        <div class="rp-resi-info-label">Kategori Masalah</div>
+        <div class="rp-resi-info-val" style="color:var(--danger)">${escapeHtml(detail.masalah_kategori)}</div>
+      </div>` : ''}
+      ${detail.retur_kategori ? `
+      <div class="rp-resi-info-item" style="grid-column:1/-1;border-right:none">
+        <div class="rp-resi-info-label">Kategori Retur</div>
+        <div class="rp-resi-info-val" style="color:var(--danger)">${escapeHtml(detail.retur_kategori)}</div>
+      </div>` : ''}
+    `;
+
+    if (!records.length) {
+      bodyEl.innerHTML = `<div class="rp-resi-loading">Belum ada riwayat tersimpan.<br>
+        <button class="rp-resi-cek-btn" style="max-width:200px;margin:12px auto 0" onclick="rpCekResi('${escapeHtml(resi)}')">🔄 Cek Sekarang</button>
+      </div>`;
+      return;
+    }
+
+    bodyEl.innerHTML = `<div>
+      ${records.map((r, i) => {
+        let waktu = '';
+        if (r.actual_time) {
+          waktu = new Date(r.actual_time * 1000).toLocaleString('id-ID', {
+            timeZone: 'Asia/Jakarta', day:'2-digit', month:'short',
+            hour:'2-digit', minute:'2-digit',
+          });
+        }
+        const desc = r.description || r.tracking_name || '';
+        const loc  = typeof r.current_location === 'string' ? r.current_location : (r.current_location?.location_name || '');
+        return `<div class="rp-tl-item${i === 0 ? ' first' : ''}">
+          <div class="rp-tl-time">${escapeHtml(waktu)}</div>
+          <div>
+            <div class="rp-tl-desc">${escapeHtml(desc)}</div>
+            ${loc ? `<div class="rp-tl-loc">📍 ${escapeHtml(loc)}</div>` : ''}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+    <button class="rp-resi-cek-btn" id="rpCekBtn" onclick="rpCekResi('${escapeHtml(resi)}')">🔄 Cek Ulang</button>`;
+
+  } catch (e) {
+    bodyEl.innerHTML = `<div class="rp-resi-loading">Error: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+async function rpCekResi(resi) {
+  const btn = document.getElementById('rpCekBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Mengecek...'; }
+  try {
+    const r = await fetch(`/api/tracking-check?table=crm_orders&id=${encodeURIComponent(resi)}`);
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Gagal cek');
+    await rpOpenResi(resi);
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = '🔄 Cek Ulang'; }
+    showToast('Gagal cek resi: ' + e.message, 'error');
+  }
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') rpCloseResiModal(); });
 
 // ── Init ───────────────────────────────────────────────────────────────────────
 (async () => {

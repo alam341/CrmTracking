@@ -31,6 +31,25 @@
 .rw-skel.big { height: 26px; width: 55%; margin-bottom: 6px; }
 @keyframes rwPulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 
+/* ── Notif Bell ───────────────────────────────────────────────────── */
+.rw-bell-wrap { position:relative; flex-shrink:0 }
+.rw-bell-btn  { background:var(--input-bg);border:1px solid var(--border);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:18px;line-height:1;display:flex;align-items:center;transition:all .15s }
+.rw-bell-btn:hover { background:var(--primary);color:#fff;border-color:var(--primary) }
+.rw-bell-badge { position:absolute;top:-5px;right:-5px;background:#dc2626;color:#fff;font-size:10px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;pointer-events:none }
+.rw-notif-drop { position:absolute;top:calc(100% + 8px);right:0;z-index:300;background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.15);width:320px;max-height:420px;display:flex;flex-direction:column;overflow:hidden }
+.rw-notif-head { display:flex;align-items:center;justify-content:space-between;padding:12px 14px 8px;border-bottom:1px solid var(--border);flex-shrink:0 }
+.rw-notif-head-title { font-size:.82rem;font-weight:700;color:var(--text-1) }
+.rw-notif-markall { font-size:.72rem;color:var(--primary);cursor:pointer;font-weight:600;background:none;border:none;padding:0;font-family:inherit }
+.rw-notif-list { overflow-y:auto;flex:1 }
+.rw-notif-item { display:flex;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);transition:background .12s }
+.rw-notif-item:hover { background:var(--hover,rgba(0,0,0,.04)) }
+.rw-notif-item.unread { background:rgba(67,97,238,.05) }
+.rw-notif-dot { width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px }
+.rw-notif-body { flex:1;min-width:0 }
+.rw-notif-text { font-size:.78rem;font-weight:600;color:var(--text-1);line-height:1.35 }
+.rw-notif-sub  { font-size:.7rem;color:var(--text-3);margin-top:2px }
+.rw-notif-empty { padding:32px 16px;text-align:center;font-size:.8rem;color:var(--text-3) }
+
 /* ── Filter & Tabs ────────────────────────────────────────────────── */
 .rw-topbar {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
@@ -52,9 +71,10 @@
 }
 .rw-refresh:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
 
-.rw-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 14px; }
+.rw-tabs { display: flex; gap: 4px; flex-wrap: nowrap; overflow-x: auto; margin-bottom: 14px; scrollbar-width: none; }
+.rw-tabs::-webkit-scrollbar { display: none; }
 .rw-tab {
-  border: 1px solid var(--border); background: var(--input-bg); color: var(--text-2);
+  border: 1px solid var(--border); background: var(--input-bg); color: var(--text-2); white-space: nowrap; flex-shrink: 0;
   border-radius: 8px; padding: 6px 14px; font-size: .8rem; font-weight: 600;
   cursor: pointer; transition: all .15s; display: flex; align-items: center; gap: 6px;
 }
@@ -100,6 +120,36 @@
 .rw-btn.done-bales    { background: #06C270; color: #fff; border-color: #06C270; }
 .rw-btn.done-lapor    { background: var(--primary); color: #fff; border-color: var(--primary); }
 .rw-btn.done-invst    { background: #7B2FBE; color: #fff; border-color: #7B2FBE; }
+/* Modal Lapor Ekspedisi */
+.rw-lapor-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6);
+  z-index: 200; align-items: center; justify-content: center;
+}
+.rw-lapor-overlay.open { display: flex; }
+.rw-lapor-modal {
+  background: var(--input-bg); border: 1px solid var(--border);
+  border-radius: 14px; padding: 24px; min-width: 280px; max-width: 340px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.5);
+}
+.rw-lapor-modal h3 { font-size: .95rem; font-weight: 700; color: var(--text-1); margin-bottom: 4px; }
+.rw-lapor-modal p  { font-size: .78rem; color: var(--text-3); margin-bottom: 18px; }
+.rw-lapor-choices  { display: flex; flex-direction: column; gap: 10px; }
+.rw-lapor-choice {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 14px; border-radius: 10px; border: 1.5px solid var(--border);
+  cursor: pointer; background: var(--bg); transition: all .15s; text-align: left;
+}
+.rw-lapor-choice:hover { border-color: var(--primary); background: var(--hover-bg); }
+.rw-lapor-choice.choice-retur:hover { border-color: #a855f7; background: #3b1f6033; }
+.rw-lapor-choice-icon { font-size: 1.3rem; line-height: 1; margin-top: 1px; }
+.rw-lapor-choice-label { font-size: .82rem; font-weight: 700; color: var(--text-1); }
+.rw-lapor-choice-desc  { font-size: .72rem; color: var(--text-3); margin-top: 2px; }
+.rw-lapor-cancel {
+  margin-top: 14px; width: 100%; padding: 8px; border-radius: 8px;
+  border: 1px solid var(--border); background: transparent; color: var(--text-3);
+  font-size: .78rem; cursor: pointer; transition: background .15s;
+}
+.rw-lapor-cancel:hover { background: var(--hover-bg); }
 .rw-btn.loading       { opacity: .6; pointer-events: none; }
 
 /* ── Empty & loading ──────────────────────────────────────────────── */
@@ -173,7 +223,6 @@
   .rw-search  { min-width: 0; width: 100%; flex-basis: 100%; }
   .rw-table-card { border-radius: 10px; }
   .rw-table td, .rw-table th { padding: 8px 10px; }
-  /* wrap rw-table in scroll div via table-wrap class */
   .rw-table-card .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 }
 @media (max-width: 480px) {
@@ -181,7 +230,6 @@
   .rw-card-num { font-size: 1.3rem; }
   .rw-topbar { flex-direction: column; align-items: stretch; }
   .rw-select, .rw-refresh { width: 100%; }
-  /* Hide less critical columns on very small screens */
   .rw-col-hide { display: none; }
 }
 </style>
@@ -191,6 +239,41 @@
 <div id="header-slot"></div>
 <div class="main-content">
   <div class="page" id="pageContent"></div>
+</div>
+
+<!-- Modal Foto Bukti CS -->
+<!-- Modal Lapor Ekspedisi -->
+<div class="rw-lapor-overlay" id="rwLaporOverlay" onclick="if(event.target===this)rwCloseLaporModal()">
+  <div class="rw-lapor-modal">
+    <h3>📤 Lapor Ekspedisi</h3>
+    <p id="rwLaporResiLabel">Pilih tipe laporan untuk resi ini</p>
+    <div class="rw-lapor-choices">
+      <button class="rw-lapor-choice" onclick="rwLaporPilih('antar_ulang')">
+        <div class="rw-lapor-choice-icon">🔄</div>
+        <div>
+          <div class="rw-lapor-choice-label">Antar Ulang</div>
+          <div class="rw-lapor-choice-desc">Minta ekspedisi coba kirim ulang ke customer</div>
+        </div>
+      </button>
+      <button class="rw-lapor-choice choice-retur" onclick="rwLaporPilih('konfirmasi_retur')">
+        <div class="rw-lapor-choice-icon">↩️</div>
+        <div>
+          <div class="rw-lapor-choice-label">Konfirmasi Retur</div>
+          <div class="rw-lapor-choice-desc">Customer minta retur, paket tidak perlu dikirim ulang</div>
+        </div>
+      </button>
+    </div>
+    <button class="rw-lapor-cancel" onclick="rwCloseLaporModal()">Batal</button>
+  </div>
+</div>
+
+<div id="rwFotoOverlay" onclick="if(event.target===this)rwCloseFoto()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2000;align-items:center;justify-content:center;padding:20px;box-sizing:border-box">
+  <div style="position:relative;max-width:520px;width:100%">
+    <button onclick="rwCloseFoto()" style="position:absolute;top:-36px;right:0;background:none;border:none;color:#fff;font-size:24px;cursor:pointer;line-height:1">✕</button>
+    <div id="rwFotoLabel" style="color:#fff;font-size:13px;font-weight:600;margin-bottom:10px"></div>
+    <img id="rwFotoImg" style="width:100%;border-radius:12px;display:block;max-height:80vh;object-fit:contain" />
+    <a id="rwFotoDownload" href="#" download target="_blank" style="display:inline-flex;align-items:center;gap:6px;margin-top:12px;background:#fff;color:#111;font-size:12px;font-weight:600;padding:7px 14px;border-radius:8px;text-decoration:none">⬇️ Download Foto</a>
+  </div>
 </div>
 
 <!-- Modal riwayat pengiriman resi -->
@@ -211,10 +294,10 @@
 <script src="js/db.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/app.js"></script>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="js/upload-configs.js"></script>
-<script src="js/upload-common.js"></script><script>
+<script src="js/upload-common.js"></script>
+<script>
 // ── State ──────────────────────────────────────────────────────────────────────
 let _rwData   = [];
 let _rwTab    = 'aktif';
@@ -228,35 +311,34 @@ const RW_PAGE_SIZE = 20;
 
 // ── Tab definitions ────────────────────────────────────────────────────────────
 const RW_TABS = [
-  { key: 'aktif',           label: 'Aktif',              emoji: '🔴' },
-  { key: 'tidak_bales',     label: 'CS Tidak Bales',     emoji: '🚨' },
-  { key: 'bales',           label: 'CS Sudah Bales',     emoji: '✅' },
-  { key: 'lapor',           label: 'Lapor Ekspedisi',    emoji: '📤' },
-  { key: 'investigasi',     label: 'Investigasi',        emoji: '🔍' },
-  { key: 'terkirim_otomatis', label: 'Terkirim Otomatis', emoji: '🚀' },
-  { key: 'semua',           label: 'Semua',              emoji: '📋' },
+  { key: 'aktif',              label: 'Aktif',              emoji: '🔴' },
+  { key: 'tidak_bales',        label: 'CS Tidak Bales',     emoji: '🚨' },
+  { key: 'bales',              label: 'CS Sudah Bales',     emoji: '✅' },
+  { key: 'lapor',              label: 'Lapor Ekspedisi',    emoji: '📤' },
+  { key: 'terkirim_otomatis',  label: 'Terkirim Otomatis',  emoji: '🚀' },
+  { key: 'sudah_konfirmasi',   label: 'Cust Konfirm',       emoji: '📸' },
+  { key: 'semua',              label: 'Semua',              emoji: '📋' },
 ];
 
-// ── Case Undel mapping (Mengantar status_category → label friendly) ───────────
+// ── Case Undel mapping ─────────────────────────────────────────────────────────
 const CASE_UNDEL_MAP = {
-  'UNDELIVERED':           { label: 'Tidak Ada Orang',    icon: '🚪' },
-  'NOBODY AT HOME':        { label: 'Tidak Ada Orang',    icon: '🚪' },
-  'PICKUP FAILED':         { label: 'Gagal Pickup',       icon: '📦' },
+  'UNDELIVERED':           { label: 'Tidak Ada Orang',        icon: '🚪' },
+  'NOBODY AT HOME':        { label: 'Tidak Ada Orang',        icon: '🚪' },
+  'PICKUP FAILED':         { label: 'Gagal Pickup',           icon: '📦' },
   'ADDRESS NOT FOUND':     { label: 'Alamat Tidak Ditemukan', icon: '📍' },
-  'WRONG ADDRESS':         { label: 'Alamat Salah',       icon: '📍' },
-  'REFUSED BY RECIPIENT':  { label: 'Ditolak Penerima',   icon: '🚫' },
-  'RECIPIENT NOT FOUND':   { label: 'Penerima Tidak Ada', icon: '👤' },
-  'UNREACHABLE':           { label: 'Tidak Bisa Dihubungi', icon: '📵' },
-  'PHONE NOT REACHABLE':   { label: 'Tidak Bisa Dihubungi', icon: '📵' },
-  'HELD AT WAREHOUSE':     { label: 'Simpan di Gudang',   icon: '🏭' },
-  'TOLAK_COD':             { label: 'Tolak Bayar COD',    icon: '💳' },
+  'WRONG ADDRESS':         { label: 'Alamat Salah',           icon: '📍' },
+  'REFUSED BY RECIPIENT':  { label: 'Ditolak Penerima',       icon: '🚫' },
+  'RECIPIENT NOT FOUND':   { label: 'Penerima Tidak Ada',     icon: '👤' },
+  'UNREACHABLE':           { label: 'Tidak Bisa Dihubungi',   icon: '📵' },
+  'PHONE NOT REACHABLE':   { label: 'Tidak Bisa Dihubungi',   icon: '📵' },
+  'HELD AT WAREHOUSE':     { label: 'Simpan di Gudang',       icon: '🏭' },
+  'TOLAK_COD':             { label: 'Tolak Bayar COD',        icon: '💳' },
 };
 function fmtCaseUndel(raw) {
   if (!raw) return '—';
   const key = raw.toUpperCase().trim();
   const mapped = CASE_UNDEL_MAP[key];
   if (mapped) return `${mapped.icon} ${mapped.label}`;
-  // Fallback: title case dari raw
   return raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
 }
 
@@ -297,6 +379,19 @@ function rwRenderPage() {
       <select class="rw-select" id="rwEkspSel" onchange="rwSetEksp(this.value)"><option value="">Semua Ekspedisi</option></select>
       <select class="rw-select" id="rwBulanSel" onchange="rwSetBulan(this.value)"><option value="">Semua Bulan</option></select>
       <button class="rw-refresh" onclick="rwLoad()">🔄 Refresh</button>
+      <div class="rw-bell-wrap" id="rwBellWrap">
+        <button class="rw-bell-btn" onclick="rwToggleBell(event)" title="Notifikasi upload CS">🔔</button>
+        <div class="rw-bell-badge" id="rwBellBadge" style="display:none">0</div>
+        <div class="rw-notif-drop" id="rwNotifDrop" style="display:none">
+          <div class="rw-notif-head">
+            <span class="rw-notif-head-title">Notifikasi Upload CS</span>
+            <button class="rw-notif-markall" onclick="rwMarkAllRead()">Tandai semua dibaca</button>
+          </div>
+          <div class="rw-notif-list" id="rwNotifList">
+            <div class="rw-notif-empty">Belum ada notifikasi</div>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="rw-tabs" id="rwTabs"></div>
     <div id="rwTable"></div>
@@ -305,7 +400,6 @@ function rwRenderPage() {
 
 // ── Render ─────────────────────────────────────────────────────────────────────
 function rwRender() {
-  // Update filter dropdowns
   const csSet   = [...new Set(_rwData.map(o => o.cs_nama).filter(Boolean))].sort();
   const ekspSet = [...new Set(_rwData.map(o => o.ekspedisi).filter(Boolean))].sort();
 
@@ -348,7 +442,6 @@ function rwRender() {
       return `<option value="${b}" ${_rwBulan===b?'selected':''}>${label}</option>`;
     }).join('');
 
-  // Apply filter bulan/CS/ekspedisi ke base data untuk counts
   const _base = _rwData.filter(o => {
     if (_rwBulan) {
       const src = o.order_date || o.created_at;
@@ -359,7 +452,6 @@ function rwRender() {
     return true;
   });
 
-  // Hitung per tab untuk summary & badge
   const counts = {
     aktif:              _base.filter(o => !o.cs_responded && !o.lapor_ekspedisi && !o.investigasi && !o.auto_resolved).length,
     tidak_bales:        _base.filter(o => o.fu_count >= 4 && !o.cs_responded && !o.lapor_ekspedisi && !o.investigasi && !o.auto_resolved).length,
@@ -367,15 +459,14 @@ function rwRender() {
     lapor:              _base.filter(o => o.lapor_ekspedisi).length,
     investigasi:        _base.filter(o => o.investigasi).length,
     terkirim_otomatis:  _base.filter(o => o.auto_resolved).length,
+    sudah_konfirmasi:   _base.filter(o => !!o.cs_log_screenshot_url).length,
     semua:              _base.length,
   };
 
-  // Subset aktif: fu breakdown
   const aktifRows = _base.filter(o => !o.cs_responded && !o.lapor_ekspedisi && !o.investigasi && !o.auto_resolved);
   const fuInfoCount = aktifRows.filter(o => o.fu_count === 1).length;
   const fu1Count    = aktifRows.filter(o => o.fu_count === 2).length;
 
-  // Summary cards
   const summary = document.getElementById('rwSummary');
   if (summary) summary.innerHTML = `<div class="rw-summary">
     <div class="rw-card ${_rwTab==='aktif'?'active':''}" onclick="rwSetTab('aktif')">
@@ -383,15 +474,15 @@ function rwRender() {
       <div class="rw-card-num c-danger">${counts.aktif}</div>
       <div class="rw-card-sub">Perlu tindak lanjut</div>
     </div>
-    <div class="rw-card" style="cursor:default">
+    <div class="rw-card ${_rwTab==='fu_info'?'active':''}" onclick="rwSetTab('fu_info')">
       <div class="rw-card-label">📨 FU Info Terkirim</div>
       <div class="rw-card-num" style="color:var(--warning)">${fuInfoCount}</div>
-      <div class="rw-card-sub">Menunggu FU 1 besok</div>
+      <div class="rw-card-sub">${_rwTab==='fu_info'?'✓ Difilter':'Menunggu FU 1 besok'}</div>
     </div>
-    <div class="rw-card" style="cursor:default">
+    <div class="rw-card ${_rwTab==='fu_1'?'active':''}" onclick="rwSetTab('fu_1')">
       <div class="rw-card-label">🔔 FU 1 Terkirim</div>
       <div class="rw-card-num" style="color:#c06000">${fu1Count}</div>
-      <div class="rw-card-sub">Menunggu FU 2 besok</div>
+      <div class="rw-card-sub">${_rwTab==='fu_1'?'✓ Difilter':'Menunggu FU 2 besok'}</div>
     </div>
     <div class="rw-card ${_rwTab==='tidak_bales'?'active':''}" onclick="rwSetTab('tidak_bales')">
       <div class="rw-card-label">🚨 CS Tidak Bales</div>
@@ -415,27 +506,27 @@ function rwRender() {
     </div>
   </div>`;
 
-  // Tabs
   const tabsEl = document.getElementById('rwTabs');
   if (tabsEl) tabsEl.innerHTML = RW_TABS.map(t => `
     <div class="rw-tab ${_rwTab===t.key?'active':''}" onclick="rwSetTab('${t.key}')">
       ${t.emoji} ${t.label} <span class="rw-badge">${counts[t.key] ?? _rwData.length}</span>
     </div>`).join('');
 
-  // Filter & render table
   rwRenderTable();
 }
 
 function rwGetTabRows() {
   let rows = _rwData;
   if (_rwTab === 'aktif')                    rows = rows.filter(o => !o.cs_responded && !o.lapor_ekspedisi && !o.investigasi && !o.auto_resolved);
+  else if (_rwTab === 'fu_info')             rows = rows.filter(o => o.fu_count === 1 && !o.cs_responded && !o.lapor_ekspedisi && !o.investigasi && !o.auto_resolved);
+  else if (_rwTab === 'fu_1')               rows = rows.filter(o => o.fu_count === 2 && !o.cs_responded && !o.lapor_ekspedisi && !o.investigasi && !o.auto_resolved);
   else if (_rwTab === 'tidak_bales')         rows = rows.filter(o => o.fu_count >= 3 && !o.cs_responded && !o.lapor_ekspedisi && !o.investigasi && !o.auto_resolved);
   else if (_rwTab === 'bales')               rows = rows.filter(o => o.cs_responded);
   else if (_rwTab === 'lapor')               rows = rows.filter(o => o.lapor_ekspedisi);
   else if (_rwTab === 'investigasi')         rows = rows.filter(o => o.investigasi);
   else if (_rwTab === 'terkirim_otomatis')   rows = rows.filter(o => o.auto_resolved);
+  else if (_rwTab === 'sudah_konfirmasi')    rows = rows.filter(o => !!o.cs_log_screenshot_url);
 
-  // Search
   if (_rwSearch) {
     const q = _rwSearch.toLowerCase();
     rows = rows.filter(o =>
@@ -462,7 +553,6 @@ function rwRenderTable() {
   const rows = rwGetTabRows();
 
   if (!rows.length) {
-    const t = RW_TABS.find(t => t.key === _rwTab);
     el.innerHTML = `<div class="rw-table-card"><div class="rw-empty"><div class="icon">${_rwTab==='aktif'?'🎉':'📭'}</div>${_rwTab==='aktif'?'Tidak ada paket aktif — semua beres!':'Tidak ada data'}</div></div>`;
     return;
   }
@@ -473,7 +563,6 @@ function rwRenderTable() {
   const pageRows = rows.slice(offset, offset + RW_PAGE_SIZE);
 
   const tableRows = pageRows.map((o, i) => {
-    // FU status badge
     const fuBadge = o.fu_count >= 3
       ? `<span class="fu-badge fu-3">FU 3 / Max</span>`
       : o.fu_count === 2
@@ -482,13 +571,17 @@ function rwRenderTable() {
 
     const fuStatusCol = _rwTab === 'aktif' ? fuBadge : '';
 
-    // Aksi buttons — Investigasi hanya muncul di tab Lapor Ekspedisi
     const btnBales = o.cs_responded
       ? `<button class="rw-btn done-bales" disabled>✅ CS Bales</button>`
       : `<button class="rw-btn" id="btn-bales-${o.id}" onclick="rwAksi(${o.id},'cs_responded')">✅ CS Bales</button>`;
-    const btnLapor = o.lapor_ekspedisi
-      ? `<button class="rw-btn done-lapor" disabled>📤 Sudah Lapor</button>`
-      : `<button class="rw-btn" id="btn-lapor-${o.id}" onclick="rwAksi(${o.id},'lapor_ekspedisi')">📤 Lapor Eksp.</button>`;
+    let btnLapor;
+    if (o.lapor_ekspedisi) {
+      btnLapor = o.lapor_type === 'konfirmasi_retur'
+        ? `<button class="rw-btn done-lapor" disabled>↩️ Konfirm. Retur</button>`
+        : `<button class="rw-btn done-lapor" disabled>📤 Antar Ulang</button>`;
+    } else {
+      btnLapor = `<button class="rw-btn" id="btn-lapor-${o.id}" onclick="rwOpenLaporModal(${o.id}, '${escapeHtml(o.resi||'')}')">📤 Lapor Eksp.</button>`;
+    }
     const btnInvst = '';
 
     return `<tr>
@@ -498,7 +591,10 @@ function rwRenderTable() {
           ? `<span onclick="rwShowResiDetail('${escapeHtml(o.resi)}');event.stopPropagation()" style="color:var(--primary);cursor:pointer;text-decoration:underline;text-underline-offset:2px">${escapeHtml(o.resi)}</span>`
           : '—'}
       </td>
-      <td style="font-size:.78rem">${escapeHtml(o.nama_pembeli || '—')}</td>
+      <td style="font-size:.78rem">
+        <div>${escapeHtml(o.nama_pembeli || '—')}</div>
+        ${o.cs_log_type ? `<div style="font-size:.68rem;font-weight:600;color:${o.cs_log_type==='sudah_balas'?'#16a34a':'#dc2626'};margin-top:2px">${o.cs_log_type==='sudah_balas'?'Customer Bales':'Customer Tidak Balas'}</div>` : ''}
+      </td>
       <td style="font-size:.78rem">
         ${o.hp_pembeli
           ? `<a href="https://wa.me/${o.hp_pembeli.replace(/\D/g,'').replace(/^0/,'62')}" target="_blank" rel="noopener" style="color:var(--primary);text-decoration:none;font-weight:600">${escapeHtml(o.hp_pembeli)}</a>`
@@ -509,6 +605,12 @@ function rwRenderTable() {
       <td style="font-size:.78rem">${escapeHtml(o.ekspedisi || '—')}</td>
       <td class="rw-col-hide" style="font-size:.78rem">${escapeHtml(o.kota_tujuan || '—')}</td>
       <td style="font-size:.78rem;color:var(--danger);font-weight:600;white-space:nowrap">${fmtCaseUndel(o.case_undel)}</td>
+      <td style="text-align:center">
+        ${o.cs_log_screenshot_url
+          ? `<img src="${escapeHtml(o.cs_log_screenshot_url)}" onclick="rwOpenFoto('${escapeHtml(o.cs_log_screenshot_url)}','${o.cs_log_type==='sudah_balas'?'💬 Customer Sudah Balas':'📵 Customer Tidak Balas'}');event.stopPropagation()"
+              style="width:36px;height:36px;object-fit:cover;border-radius:5px;cursor:pointer" />`
+          : '<span style="color:var(--text-3);font-size:.75rem">—</span>'}
+      </td>
       <td class="rw-col-hide" style="font-size:.72rem;color:var(--text-3)">
         ${fmtTs(o.created_at)}
         <div style="font-size:.65rem;color:var(--text-3)">${fmtDurShort(o.created_at)} lalu</div>
@@ -540,7 +642,7 @@ function rwRenderTable() {
           <thead><tr>
             <th class="rw-col-hide">#</th><th>Resi</th><th>Nama Pembeli</th><th>No Customer</th><th>CS</th>
             <th class="rw-col-hide">Produk</th><th>Ekspedisi</th><th class="rw-col-hide">Kota</th>
-            <th>Case Undel</th><th class="rw-col-hide">Masuk RW</th><th>Follow Up</th>
+            <th>Case Undel</th><th>Bukti CS</th><th class="rw-col-hide">Masuk RW</th><th>Follow Up</th>
             <th>Status FU</th><th>Aksi</th>
           </tr></thead>
           <tbody>${tableRows}</tbody>
@@ -552,9 +654,7 @@ function rwRenderTable() {
 
 // ── Aksi (centang) ─────────────────────────────────────────────────────────────
 async function rwAksi(id, field) {
-  const btnId = field === 'cs_responded'  ? `btn-bales-${id}`
-              : field === 'lapor_ekspedisi' ? `btn-lapor-${id}`
-              : `btn-invst-${id}`;
+  const btnId = field === 'cs_responded' ? `btn-bales-${id}` : `btn-invst-${id}`;
   const btn = document.getElementById(btnId);
   if (btn) { btn.classList.add('loading'); btn.textContent = '⏳...'; }
 
@@ -566,14 +666,61 @@ async function rwAksi(id, field) {
     });
     if (!r.ok) throw new Error((await r.json()).error || 'Gagal update');
 
-    // Update local data
     const row = _rwData.find(o => o.id === id);
     if (row) {
       row[field] = true;
       row[field + '_at'] = new Date().toISOString();
     }
 
-    const label = field === 'cs_responded' ? 'CS Bales' : field === 'lapor_ekspedisi' ? 'Lapor Ekspedisi' : 'Investigasi';
+    showToast(`${field === 'cs_responded' ? 'CS Bales' : 'Investigasi'} dicatat`, 'success');
+    rwRender();
+  } catch (e) {
+    if (btn) { btn.classList.remove('loading'); btn.textContent = '⚠️ Gagal'; }
+    showToast('Gagal: ' + e.message, 'error');
+  }
+}
+
+// ── Modal Lapor Ekspedisi ──────────────────────────────────────────────────────
+let _rwLaporActiveId = null;
+
+function rwOpenLaporModal(id, resi) {
+  _rwLaporActiveId = id;
+  const label = document.getElementById('rwLaporResiLabel');
+  if (label) label.textContent = `Resi: ${resi || id}`;
+  document.getElementById('rwLaporOverlay').classList.add('open');
+}
+function rwCloseLaporModal() {
+  document.getElementById('rwLaporOverlay').classList.remove('open');
+  _rwLaporActiveId = null;
+}
+function rwLaporPilih(lapor_type) {
+  if (!_rwLaporActiveId) return;
+  const id = _rwLaporActiveId;
+  rwCloseLaporModal();
+  rwLaporAksi(id, lapor_type);
+}
+
+async function rwLaporAksi(id, lapor_type) {
+  const btnId = lapor_type === 'antar_ulang' ? `btn-antar-${id}` : `btn-kretur-${id}`;
+  const btn = document.getElementById(btnId);
+  if (btn) { btn.classList.add('loading'); btn.textContent = '⏳...'; }
+
+  try {
+    const r = await fetch('/api/room-work', {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ id, lapor_ekspedisi: true, lapor_type }),
+    });
+    if (!r.ok) throw new Error((await r.json()).error || 'Gagal update');
+
+    const row = _rwData.find(o => o.id === id);
+    if (row) {
+      row.lapor_ekspedisi    = true;
+      row.lapor_ekspedisi_at = new Date().toISOString();
+      row.lapor_type         = lapor_type;
+    }
+
+    const label = lapor_type === 'antar_ulang' ? 'Antar Ulang' : 'Konfirmasi Retur';
     showToast(`${label} dicatat`, 'success');
     rwRender();
   } catch (e) {
@@ -587,7 +734,6 @@ function rwSetTab(key)    { _rwTab = key; _rwPage = 1; rwRender(); }
 function rwSetSearch(val) { _rwSearch = val; _rwPage = 1; rwRenderTable(); }
 function rwSetEksp(val)   { _rwEksp = val; _rwPage = 1; rwRender(); }
 
-// ── CS multi-select ────────────────────────────────────────────────────────────
 function rwToggleCSDropdown(e) {
   e.stopPropagation();
   const dd = document.getElementById('rwCSDropdown');
@@ -595,9 +741,7 @@ function rwToggleCSDropdown(e) {
 }
 function rwToggleCS(val, checked) {
   checked ? _rwCS.add(val) : _rwCS.delete(val);
-  rwUpdateCSLabel();
-  _rwPage = 1;
-  rwRender();
+  rwUpdateCSLabel(); _rwPage = 1; rwRender();
 }
 function rwCSSelectAll() {
   document.querySelectorAll('#rwCSDropdown input[type=checkbox]').forEach(cb => {
@@ -616,7 +760,6 @@ function rwUpdateCSLabel() {
   el.textContent = _rwCS.size === 0 ? 'Semua CS' : `${_rwCS.size} CS dipilih`;
   el.style.color = _rwCS.size > 0 ? 'var(--primary)' : '';
 }
-// Tutup dropdown kalau klik di luar
 document.addEventListener('click', e => {
   if (!document.getElementById('rwCSWrap')?.contains(e.target)) {
     const dd = document.getElementById('rwCSDropdown');
@@ -642,6 +785,138 @@ async function rwLoad() {
     _rwPreviewMode = false;
     rwRender();
   }
+}
+
+// ── Modal foto bukti CS ────────────────────────────────────────────────────────
+function rwOpenFoto(url, label) {
+  document.getElementById('rwFotoImg').src         = url;
+  document.getElementById('rwFotoDownload').href   = url;
+  document.getElementById('rwFotoLabel').textContent = label || '';
+  document.getElementById('rwFotoOverlay').style.display = 'flex';
+}
+function rwCloseFoto() {
+  document.getElementById('rwFotoOverlay').style.display = 'none';
+  document.getElementById('rwFotoImg').src = '';
+}
+
+// ── NOTIF BELL ─────────────────────────────────────────────────────────────────
+const NOTIF_READ_KEY = 'rw_notif_read_crm';
+let _notifs = [];
+
+function rwNotifReadSet() {
+  return new Set(JSON.parse(localStorage.getItem(NOTIF_READ_KEY) || '[]'));
+}
+function rwNotifMarkRead(id) {
+  const s = rwNotifReadSet(); s.add(id);
+  localStorage.setItem(NOTIF_READ_KEY, JSON.stringify([...s]));
+}
+function rwNotifMarkAllRead() {
+  const ids = _notifs.map(n => n.id);
+  localStorage.setItem(NOTIF_READ_KEY, JSON.stringify(ids));
+  rwRenderNotifs();
+}
+function rwMarkAllRead() { rwNotifMarkAllRead(); }
+
+function rwNotifUnreadCount() {
+  const read = rwNotifReadSet();
+  return _notifs.filter(n => !read.has(n.id)).length;
+}
+
+function rwUpdateBadge() {
+  const badge = document.getElementById('rwBellBadge');
+  if (!badge) return;
+  const count = rwNotifUnreadCount();
+  badge.textContent = count > 9 ? '9+' : count;
+  badge.style.display = count > 0 ? 'flex' : 'none';
+}
+
+function rwRenderNotifs() {
+  const list = document.getElementById('rwNotifList');
+  if (!list) return;
+  rwUpdateBadge();
+  if (!_notifs.length) {
+    list.innerHTML = '<div class="rw-notif-empty">Belum ada notifikasi</div>';
+    return;
+  }
+  const read = rwNotifReadSet();
+  list.innerHTML = _notifs.map(n => {
+    const isRead   = read.has(n.id);
+    const isSudah  = n.type === 'sudah_balas';
+    const dotColor = isSudah ? '#16a34a' : '#dc2626';
+    const label    = isSudah ? 'Customer Sudah Balas' : 'Customer Tidak Balas';
+    const ts       = n.ts ? new Date(n.ts).toLocaleString('id-ID', { timeZone:'Asia/Jakarta', day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }) : '';
+    return `<div class="rw-notif-item ${isRead ? '' : 'unread'}" onclick="rwNotifClick('${n.id}','${n.resi}')">
+      <div class="rw-notif-dot" style="background:${dotColor}"></div>
+      <div class="rw-notif-body">
+        <div class="rw-notif-text">${escapeHtml(n.cs_nama||'CS')} upload bukti · ${label}</div>
+        <div class="rw-notif-sub">Resi ${escapeHtml(n.resi)} · ${ts}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function rwNotifClick(id, resi) {
+  rwNotifMarkRead(id);
+  rwRenderNotifs();
+  rwCloseNotifDrop();
+  if (resi) rwShowResiDetail(resi);
+}
+
+function rwToggleBell(e) {
+  e.stopPropagation();
+  const drop = document.getElementById('rwNotifDrop');
+  if (!drop) return;
+  const open = drop.style.display !== 'none';
+  drop.style.display = open ? 'none' : 'flex';
+  if (!open) rwRenderNotifs();
+}
+
+function rwCloseNotifDrop() {
+  const drop = document.getElementById('rwNotifDrop');
+  if (drop) drop.style.display = 'none';
+}
+
+document.addEventListener('click', e => {
+  const wrap = document.getElementById('rwBellWrap');
+  if (wrap && !wrap.contains(e.target)) rwCloseNotifDrop();
+});
+
+async function rwLoadNotifs() {
+  try {
+    const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+    const { data } = await _sb
+      .from('room_work')
+      .select('resi,cs_log_type,cs_log_at,cs_log_cs_nama')
+      .not('cs_log_type', 'is', null)
+      .gte('cs_log_at', since)
+      .order('cs_log_at', { ascending: false })
+      .limit(50);
+    _notifs = (data || []).map(r => ({
+      id:      r.resi,
+      resi:    r.resi,
+      cs_nama: r.cs_log_cs_nama,
+      type:    r.cs_log_type,
+      ts:      r.cs_log_at,
+    }));
+    rwUpdateBadge();
+  } catch(_) {}
+}
+
+function rwSubscribeRealtime() {
+  try {
+    _sb.channel('room_work_cs_log_crm')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'room_work' }, payload => {
+        const row = payload.new;
+        if (!row.cs_log_type || !row.cs_log_at) return;
+        const existing = _notifs.find(n => n.id === row.resi);
+        if (existing && existing.ts === row.cs_log_at) return;
+        _notifs = _notifs.filter(n => n.id !== row.resi);
+        _notifs.unshift({ id: row.resi, resi: row.resi, cs_nama: row.cs_log_cs_nama, type: row.cs_log_type, ts: row.cs_log_at });
+        rwUpdateBadge();
+        rwLoad();
+      })
+      .subscribe();
+  } catch(_) {}
 }
 
 // ── Resi detail modal ──────────────────────────────────────────────────────────
@@ -711,14 +986,32 @@ async function rwShowResiDetail(resi) {
       </div>` : ''}
     `;
 
+    const rwRow    = _rwData.find(r => r.resi === resi);
+    let csLogHtml  = '';
+    if (rwRow?.cs_log_screenshot_url) {
+      const isSudah  = rwRow.cs_log_type === 'sudah_balas';
+      const logLabel = isSudah ? '💬 Customer Sudah Balas' : '📵 Customer Tidak Balas';
+      const logColor = isSudah ? '#16a34a' : '#dc2626';
+      const logBg    = isSudah ? '#f0fdf4'  : '#fef2f2';
+      const logBdr   = isSudah ? '#86efac'  : '#fca5a5';
+      const byCs     = rwRow.cs_log_cs_nama ? ` · ${escapeHtml(rwRow.cs_log_cs_nama)}` : '';
+      const ssUrl    = escapeHtml(rwRow.cs_log_screenshot_url);
+      csLogHtml = `
+        <div style="border:1.5px solid ${logBdr};border-radius:8px;background:${logBg};padding:8px 12px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <span style="font-size:12px;font-weight:700;color:${logColor}">${logLabel}${byCs}</span>
+          <a href="${ssUrl}" target="_blank" download
+            style="font-size:11px;font-weight:600;color:${logColor};text-decoration:none;white-space:nowrap">⬇️ Lihat Foto</a>
+        </div>`;
+    }
+
     if (!records.length) {
-      bodyEl.innerHTML = `<div class="rw-resi-loading">Belum ada riwayat tersimpan.<br>
+      bodyEl.innerHTML = `${csLogHtml}<div class="rw-resi-loading">Belum ada riwayat tersimpan.<br>
         <button class="rw-resi-cek-btn" style="max-width:200px;margin:12px auto 0" onclick="rwCekResiFromModal('${escapeHtml(resi)}')">🔄 Cek Sekarang</button>
       </div>`;
       return;
     }
 
-    bodyEl.innerHTML = `<div class="rw-timeline">
+    bodyEl.innerHTML = `${csLogHtml}<div class="rw-timeline">
       ${records.map((r, i) => {
         let waktu = '';
         if (r.actual_time) {
@@ -728,7 +1021,7 @@ async function rwShowResiDetail(resi) {
           });
         }
         const desc = r.description || r.tracking_name || '';
-        const loc  = r.current_location?.location_name || '';
+        const loc  = typeof r.current_location === 'string' ? r.current_location : (r.current_location?.location_name || '');
         return `<div class="rw-tl-item${i === 0 ? ' first' : ''}">
           <div class="rw-tl-time">${escapeHtml(waktu)}</div>
           <div>
@@ -752,7 +1045,6 @@ async function rwCekResiFromModal(resi) {
     const r = await fetch(`/api/tracking-check?table=crm_orders&id=${encodeURIComponent(resi)}`);
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || 'Gagal cek');
-    // Reload modal dengan data terbaru
     await rwShowResiDetail(resi);
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = '🔄 Cek Ulang'; }
@@ -768,6 +1060,8 @@ async function rwCekResiFromModal(resi) {
   renderLayout('room-work', user);
   rwRenderPage();
   await rwLoad();
+  rwLoadNotifs();
+  rwSubscribeRealtime();
 })();
 </script>
 </body>
