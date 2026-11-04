@@ -19,6 +19,7 @@ const { notifInvestigasi } = require('../lib/notif-wa');
 // ── Stage mapping dari status_category Mengantar ke stage internal ────────────
 const STATUS_MAP = {
   'ACTIVE':                 'DIKIRIM',
+  'INCOMING':               'DIKIRIM',
   'WAITING NEXT PROCESS':   'DIKIRIM',
   'PENDING PICKUP':         'DIKIRIM',
   'PICKED UP':              'DIKIRIM',
