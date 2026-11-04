@@ -1,100 +1,105 @@
-// One-time backfill: isi cs_nama, nama_pembeli, hp_pembeli, produk, kota_tujuan
-// untuk room_work yang datanya masih kosong (masuk sebelum fix fetchCsInputOrder).
-// GET /api/backfill-roomwork?secret=<CRON_SECRET>
-// Proses 100 baris per request — ulangi sampai response bilang done: true.
+// Backfill room_work: isi nama_pembeli, hp_pembeli, produk, cs_nama, kota_tujuan
+// yang masih kosong dari crm_orders (terjadi kalau webhook Mengantar fire sebelum
+// order di-upload Excel, sehingga crm_orders belum punya data lengkap saat itu).
+//
+// GET /api/backfill-roomwork          → proses 100 baris kosong per request
+// GET /api/backfill-roomwork?mode=all → loop semua sampai done (max 10 iterasi)
 
-const { sbFetch }  = require('../lib/supabase-rest');
+const { sbFetch }   = require('../lib/supabase-rest');
 const { getCsNoWa } = require('../lib/notif-wa');
 
-const CS_SUPABASE_URL = 'https://lqpcnzdssvvcayqvdjxs.supabase.co';
 const BATCH = 10;
 
-async function fetchCsInputByResi(resiList, key) {
-  if (!resiList.length || !key) return {};
-  // Fetch semua sekaligus pakai filter in()
-  const filter = resiList.map(r => encodeURIComponent(r)).join(',');
-  try {
-    const r = await fetch(
-      `${CS_SUPABASE_URL}/rest/v1/all_orderan?select=resi,nama,hp,jumlah,cs,kabupaten&resi=in.(${filter})`,
-      { headers: { apikey: key, Authorization: `Bearer ${key}` } }
-    );
-    if (!r.ok) return {};
-    const rows = await r.json();
-    const map = {};
-    (rows || []).forEach(row => {
-      if (!row.resi) return;
-      const resiClean = String(row.resi).replace(/^'+/, '').trim();
-      map[resiClean] = {
-        ...row,
-        nama: (row.nama || '').split('|')[0].trim() || row.nama || '',
-      };
-    });
-    return map;
-  } catch { return {}; }
-}
-
 module.exports = async function handler(req, res) {
-  const key = process.env.CS_INPUT_SERVICE_KEY;
-  if (!key) return res.status(500).json({ error: 'CS_INPUT_SERVICE_KEY belum di-set' });
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  if (req.method === 'OPTIONS') { res.status(200).end(); return; }
 
-  // Ambil room_work yang masih kosong (cs_nama atau nama_pembeli kosong)
-  let rows;
-  try {
-    rows = await sbFetch(
-      `room_work?select=id,resi,cs_nama,nama_pembeli,kota_tujuan` +
-      `&or=(cs_nama.is.null,cs_nama.eq.,nama_pembeli.is.null,nama_pembeli.eq.)` +
-      `&order=id.asc&limit=100`
-    );
-  } catch (e) {
-    return res.status(500).json({ error: 'Gagal fetch room_work: ' + e.message });
-  }
+  let totalUpdated  = 0;
+  let totalFailed   = 0;
+  let totalSkipped  = 0;
+  let iterations    = 0;
+  const MAX_ITER    = req.query.mode === 'all' ? 10 : 1;
 
-  if (!rows?.length) return res.status(200).json({ done: true, updated: 0 });
+  while (iterations < MAX_ITER) {
+    iterations++;
 
-  const resiList = rows.map(r => r.resi).filter(Boolean);
-  const csMap = await fetchCsInputByResi(resiList, key);
+    // 1. Ambil room_work yang masih ada field kosong
+    let rwRows;
+    try {
+      rwRows = await sbFetch(
+        `room_work?select=id,resi,cs_nama,cs_no_wa,nama_pembeli,hp_pembeli,produk,kota_tujuan` +
+        `&or=(nama_pembeli.is.null,nama_pembeli.eq.,hp_pembeli.is.null,hp_pembeli.eq.,produk.is.null,produk.eq.)` +
+        `&order=id.asc&limit=100`
+      );
+    } catch (e) {
+      return res.status(500).json({ error: 'Gagal fetch room_work: ' + e.message });
+    }
 
-  let updated = 0, failed = 0;
+    if (!rwRows?.length) break;
 
-  for (let i = 0; i < rows.length; i += BATCH) {
-    const batch = rows.slice(i, i + BATCH);
-    await Promise.all(batch.map(async row => {
-      const cs = csMap[row.resi];
-      if (!cs) return; // resi tidak ditemukan di CS Input — skip
-
-      const csNama = cs.cs || '';
-      const csNoWa = csNama ? await getCsNoWa(csNama).catch(() => null) : null;
-
-      const patch = {
-        cs_nama:      csNama,
-        cs_no_wa:     csNoWa || '',
-        nama_pembeli: cs.nama || '',
-        hp_pembeli:   cs.hp   || '',
-        produk:       cs.jumlah || '',
-        kota_tujuan:  cs.kabupaten || '',
-      };
-
-      // Hanya update field yang kosong — jangan timpa yang sudah ada
-      if (row.cs_nama)      delete patch.cs_nama;
-      if (row.kota_tujuan)  delete patch.kota_tujuan;
-      if (!Object.keys(patch).length) return;
-
+    // 2. Ambil data lengkap dari crm_orders
+    const resiList = rwRows.map(r => r.resi).filter(Boolean);
+    const orderMap = {};
+    const CHUNK = 100;
+    for (let i = 0; i < resiList.length; i += CHUNK) {
+      const chunk = resiList.slice(i, i + CHUNK);
       try {
-        await sbFetch(`room_work?id=eq.${row.id}`, {
-          method: 'PATCH',
-          body: JSON.stringify(patch),
-        });
-        updated++;
-      } catch (e) {
-        failed++;
-      }
-    }));
+        const orders = await sbFetch(
+          `crm_orders?select=id,nama,hp,produk,cs_nama,kota_tujuan` +
+          `&id=in.(${chunk.map(r => encodeURIComponent(r)).join(',')})`
+        );
+        (orders || []).forEach(o => { orderMap[o.id] = o; });
+      } catch (_) {}
+    }
+
+    // 3. Patch room_work dengan data dari crm_orders
+    for (let i = 0; i < rwRows.length; i += BATCH) {
+      const batch = rwRows.slice(i, i + BATCH);
+      await Promise.all(batch.map(async row => {
+        const order = orderMap[row.resi];
+        if (!order) { totalSkipped++; return; } // resi belum ada di crm_orders
+
+        // Kalau crm_orders juga masih kosong (webhook create row tapi Excel belum diupload)
+        if (!order.nama && !order.hp && !order.produk) { totalSkipped++; return; }
+
+        const patch = {};
+
+        // Hanya isi field yang masih kosong
+        if (!row.nama_pembeli && order.nama)      patch.nama_pembeli = order.nama;
+        if (!row.hp_pembeli   && order.hp)        patch.hp_pembeli   = order.hp;
+        if (!row.produk       && order.produk)    patch.produk       = order.produk;
+        if (!row.kota_tujuan  && order.kota_tujuan) patch.kota_tujuan = order.kota_tujuan;
+
+        // cs_nama + cs_no_wa — update kalau kosong
+        if (!row.cs_nama && order.cs_nama) {
+          patch.cs_nama = order.cs_nama;
+          const csNoWa = await getCsNoWa(order.cs_nama).catch(() => null);
+          if (csNoWa) patch.cs_no_wa = csNoWa;
+        }
+
+        if (!Object.keys(patch).length) { totalSkipped++; return; }
+
+        try {
+          await sbFetch(`room_work?id=eq.${row.id}`, {
+            method: 'PATCH',
+            body:   JSON.stringify(patch),
+          });
+          totalUpdated++;
+        } catch (_) {
+          totalFailed++;
+        }
+      }));
+    }
+
+    // Kalau kurang dari 100 artinya sudah habis
+    if (rwRows.length < 100) break;
   }
 
   res.status(200).json({
-    done: rows.length < 100,
-    processed: rows.length,
-    updated,
-    failed,
+    done:    true,
+    updated: totalUpdated,
+    failed:  totalFailed,
+    skipped: totalSkipped,
   });
 };
