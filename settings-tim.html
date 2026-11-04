@@ -202,71 +202,26 @@ function renderTeamPage() {
   loadNotifStatus();
 }
 
-let _notifStatusTimer = null;
 async function loadNotifStatus() {
   const wrap = document.getElementById('notifStatusWrap');
   if (!wrap) return;
   try {
-    const r = await fetch('/api/notif-proxy?action=qr');
+    const r = await fetch('/api/notif-proxy?action=status');
     const data = await r.json();
 
-    if (data.unconfigured) {
-      wrap.innerHTML = `<div style="display:flex;align-items:center;gap:10px">
-        <span style="width:10px;height:10px;border-radius:50%;background:#aaa;display:inline-block;flex-shrink:0"></span>
-        <span style="font-size:.85rem;color:var(--text-3)">Belum dikonfigurasi — WA notif CRM akan disetup terpisah</span>
-      </div>`;
-      return;
-    }
-
-    if (data.error) {
+    if (!data.configured) {
       wrap.innerHTML = `<div style="display:flex;align-items:center;gap:10px">
         <span style="width:10px;height:10px;border-radius:50%;background:#EF233C;display:inline-block;flex-shrink:0"></span>
-        <span style="font-size:.85rem;color:var(--danger)">Service tidak bisa dihubungi — pastikan VPS & baileys-notif aktif</span>
+        <span style="font-size:.85rem;color:var(--danger)">FONNTE_TOKEN belum di-set — set di Vercel Environment Variables</span>
       </div>`;
       return;
     }
 
-    if (data.connected) {
-      clearInterval(_notifStatusTimer);
-      wrap.innerHTML = `<div style="display:flex;align-items:center;gap:10px">
-        <span style="width:10px;height:10px;border-radius:50%;background:#06C270;display:inline-block;flex-shrink:0;box-shadow:0 0 0 3px rgba(6,194,112,.2)"></span>
-        <span style="font-size:.85rem;color:var(--success);font-weight:600">Terhubung — siap kirim notif WA ke CS</span>
-      </div>`;
-      return;
-    }
-
-    if (data.waiting) {
-      wrap.innerHTML = `<div style="display:flex;align-items:center;gap:10px">
-        <span style="width:10px;height:10px;border-radius:50%;background:#FFB703;display:inline-block;flex-shrink:0"></span>
-        <span style="font-size:.85rem;color:var(--text-2)">Menunggu QR... (restart baileys-notif di VPS)</span>
-      </div>`;
-      return;
-    }
-
-    if (data.qr) {
-      clearInterval(_notifStatusTimer);
-      wrap.innerHTML = `
-        <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">
-          <div>
-            <img src="${escapeHtml(data.qr)}" style="width:200px;height:200px;border:3px solid var(--border);border-radius:10px;display:block">
-            <div style="font-size:.72rem;color:var(--text-3);margin-top:6px;text-align:center">QR expired tiap ~60 detik</div>
-          </div>
-          <div style="max-width:280px">
-            <div style="font-weight:600;font-size:.88rem;margin-bottom:8px">📱 Cara scan:</div>
-            <ol style="font-size:.82rem;color:var(--text-2);line-height:1.8;padding-left:18px;margin:0">
-              <li>Buka WhatsApp di HP</li>
-              <li>Setelan → Perangkat Tertaut</li>
-              <li>Tautkan Perangkat</li>
-              <li>Scan QR di kiri</li>
-            </ol>
-            <div style="margin-top:12px;font-size:.78rem;color:var(--text-3)">Gunakan nomor khusus notifikasi internal — bukan nomor CS aktif.</div>
-            <button class="btn btn-outline btn-sm" style="margin-top:12px" onclick="loadNotifStatus()">🔄 Refresh QR</button>
-          </div>
-        </div>
-      `;
-      // Auto-refresh QR tiap 30 detik kalau belum terscan
-      _notifStatusTimer = setInterval(loadNotifStatus, 30000);
-    }
+    wrap.innerHTML = `<div style="display:flex;align-items:center;gap:10px">
+      <span style="width:10px;height:10px;border-radius:50%;background:#06C270;display:inline-block;flex-shrink:0;box-shadow:0 0 0 3px rgba(6,194,112,.2)"></span>
+      <span style="font-size:.85rem;color:var(--success);font-weight:600">Fonnte aktif — notif WA siap terkirim ke CS</span>
+      <span style="font-size:.78rem;color:var(--text-3)">(token: ${escapeHtml(data.token_preview)})</span>
+    </div>`;
   } catch(e) {
     wrap.innerHTML = `<div style="font-size:.82rem;color:var(--text-3)">Gagal cek status: ${escapeHtml(e.message)}</div>`;
   }
