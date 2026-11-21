@@ -698,7 +698,7 @@ function initTrackingPage(cfg) {
     const kw = q.toLowerCase();
     document.querySelectorAll('#trCSList label').forEach(lbl => {
       const name = lbl.querySelector('span')?.textContent?.toLowerCase() || '';
-      lbl.style.display = name.includes(kw) ? '' : 'none';
+      lbl.style.display = name.includes(kw) ? 'flex' : 'none';
     });
   };
   function trUpdateCSLabel() {
