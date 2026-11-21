@@ -381,13 +381,20 @@ function initTrackingPage(cfg) {
                 </button>
                 <div id="trCSDropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:200;
                   background:var(--card);border:1px solid var(--border);border-radius:10px;
-                  box-shadow:0 4px 20px rgba(0,0,0,.12);min-width:200px;max-height:260px;overflow-y:auto;padding:6px 0">
-                  <div style="padding:6px 12px 4px;display:flex;gap:8px">
+                  box-shadow:0 4px 20px rgba(0,0,0,.12);min-width:200px;padding:6px 0">
+                  <div style="padding:6px 10px 4px">
+                    <input id="trCSSearch" type="text" placeholder="Cari nama CS..." oninput="trCSSearch(this.value)"
+                      onclick="event.stopPropagation()"
+                      style="width:100%;box-sizing:border-box;padding:5px 10px;font-size:.78rem;border:1px solid var(--border);
+                        border-radius:7px;outline:none;background:var(--bg);color:var(--text)">
+                  </div>
+                  <div style="padding:2px 12px 4px;display:flex;gap:8px">
                     <span onclick="trCSSelectAll()" style="font-size:.72rem;color:var(--primary);cursor:pointer;font-weight:600">Pilih Semua</span>
                     <span style="color:var(--border)">|</span>
                     <span onclick="trCSClearAll()" style="font-size:.72rem;color:var(--text-3);cursor:pointer">Reset</span>
                   </div>
                   <div style="height:1px;background:var(--border);margin:4px 0"></div>
+                  <div id="trCSList" style="max-height:220px;overflow-y:auto">
                   ${csOptions().map(c => `
                     <label style="display:flex;align-items:center;gap:8px;padding:6px 14px;cursor:pointer;font-size:.8rem"
                       onmouseover="this.style.background='rgba(67,97,238,.06)'" onmouseout="this.style.background=''">
@@ -396,6 +403,7 @@ function initTrackingPage(cfg) {
                         style="accent-color:var(--primary);width:14px;height:14px;cursor:pointer">
                       <span>${escapeHtml(c)}</span>
                     </label>`).join('')}
+                  </div>
                 </div>
               </div>
               <select class="ctrl-select" id="trProdukFilter" onchange="trSetProdukFilter(this.value)">
@@ -662,7 +670,13 @@ function initTrackingPage(cfg) {
   window.trToggleCSDropdown = (e) => {
     e.stopPropagation();
     const dd = document.getElementById('trCSDropdown');
-    if (dd) dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+    if (!dd) return;
+    const opening = dd.style.display === 'none';
+    dd.style.display = opening ? 'block' : 'none';
+    if (opening) {
+      const si = document.getElementById('trCSSearch');
+      if (si) { si.value = ''; trCSSearch(''); si.focus(); }
+    }
   };
   window.trToggleCS = (val, checked) => {
     checked ? st.csFilter.add(val) : st.csFilter.delete(val);
@@ -670,13 +684,21 @@ function initTrackingPage(cfg) {
     st.page = 1; applyFilter();
   };
   window.trCSSelectAll = () => {
-    document.querySelectorAll('#trCSDropdown input[type=checkbox]').forEach(cb => { cb.checked = true; st.csFilter.add(cb.value); });
+    document.querySelectorAll('#trCSList label:not([style*="display:none"]) input[type=checkbox]').forEach(cb => { cb.checked = true; st.csFilter.add(cb.value); });
     trUpdateCSLabel(); st.page = 1; applyFilter();
   };
   window.trCSClearAll = () => {
     st.csFilter.clear();
     document.querySelectorAll('#trCSDropdown input[type=checkbox]').forEach(cb => cb.checked = false);
+    const si = document.getElementById('trCSSearch'); if (si) { si.value = ''; trCSSearch(''); }
     trUpdateCSLabel(); st.page = 1; applyFilter();
+  };
+  window.trCSSearch = (q) => {
+    const kw = q.toLowerCase();
+    document.querySelectorAll('#trCSList label').forEach(lbl => {
+      const name = lbl.querySelector('span')?.textContent?.toLowerCase() || '';
+      lbl.style.display = name.includes(kw) ? '' : 'none';
+    });
   };
   function trUpdateCSLabel() {
     const el = document.getElementById('trCSLabel');
