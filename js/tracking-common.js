@@ -381,27 +381,26 @@ function initTrackingPage(cfg) {
                 </button>
                 <div id="trCSDropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:200;
                   background:var(--card);border:1px solid var(--border);border-radius:10px;
-                  box-shadow:0 4px 20px rgba(0,0,0,.12);min-width:220px;width:220px;padding:6px 0">
-                  <div style="padding:6px 10px 4px">
+                  box-shadow:0 4px 20px rgba(0,0,0,.12);min-width:200px;max-height:320px;overflow-y:auto;padding:6px 0">
+                  <div style="position:sticky;top:0;background:var(--card);z-index:1;padding:6px 10px 4px;border-bottom:1px solid var(--border)">
                     <input id="trCSSearch" type="text" placeholder="Cari nama CS..." oninput="trCSSearch(this.value)"
                       onclick="event.stopPropagation()"
                       style="width:100%;box-sizing:border-box;padding:5px 10px;font-size:.78rem;border:1px solid var(--border);
                         border-radius:7px;outline:none;background:var(--bg);color:var(--text)">
+                    <div style="padding-top:4px;display:flex;gap:8px">
+                      <span onclick="trCSSelectAll()" style="font-size:.72rem;color:var(--primary);cursor:pointer;font-weight:600">Pilih Semua</span>
+                      <span style="color:var(--border)">|</span>
+                      <span onclick="trCSClearAll()" style="font-size:.72rem;color:var(--text-3);cursor:pointer">Reset</span>
+                    </div>
                   </div>
-                  <div style="padding:2px 12px 4px;display:flex;gap:8px">
-                    <span onclick="trCSSelectAll()" style="font-size:.72rem;color:var(--primary);cursor:pointer;font-weight:600">Pilih Semua</span>
-                    <span style="color:var(--border)">|</span>
-                    <span onclick="trCSClearAll()" style="font-size:.72rem;color:var(--text-3);cursor:pointer">Reset</span>
-                  </div>
-                  <div style="height:1px;background:var(--border);margin:4px 0"></div>
-                  <div id="trCSList" style="max-height:220px;overflow-y:auto;display:block">
+                  <div id="trCSList">
                   ${csOptions().map(c => `
-                    <label style="display:flex;align-items:center;gap:8px;padding:6px 14px;cursor:pointer;font-size:.8rem;width:100%;box-sizing:border-box;float:none"
+                    <label style="display:flex;align-items:center;gap:8px;padding:6px 14px;cursor:pointer;font-size:.8rem"
                       onmouseover="this.style.background='rgba(67,97,238,.06)'" onmouseout="this.style.background=''">
                       <input type="checkbox" value="${escapeHtml(c)}" ${st.csFilter.has(c)?'checked':''}
                         onchange="trToggleCS(this.value,this.checked)"
-                        style="accent-color:var(--primary);width:14px;height:14px;min-width:14px;cursor:pointer;flex-shrink:0">
-                      <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(c)}</span>
+                        style="accent-color:var(--primary);width:14px;height:14px;cursor:pointer">
+                      <span>${escapeHtml(c)}</span>
                     </label>`).join('')}
                   </div>
                 </div>
